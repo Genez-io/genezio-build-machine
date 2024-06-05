@@ -26,49 +26,47 @@ app.post("/deploy", async (req, res) => {
 
   // get all keys of code
   await Promise.all([
-    ...Object.keys(code).map(async (key) => {
+    ...Object.keys(code).map(async key => {
       const codeFile = code[key];
 
       // get fileName from key
-      const fileName = key.split("/").pop() as string;
+      const fileName = key.split("/").pop();
       const finalPath = path.join(tmpDir, ...key.split("/").slice(0, -1));
       await writeToFile(finalPath, fileName, codeFile, true);
-    }),
+    })
   ]);
 
   // deploy the code
   // npm i
-  const installResult = await shellExec(`cd ${tmpDir} && npm i`).catch((e) => {
+  const installResult = await shellExec(`cd ${tmpDir} && npm i`).catch(e => {
     console.error("Failed to install dependencies", e);
     return null;
   });
   if (!installResult || installResult.code !== 0) {
-    return {
-      statusCode: "500",
-      body: `Failed to install dependencies ${installResult?.stdout} ${installResult?.stderr}`,
-    };
+    return res
+      .status(500)
+      .send(
+        `Failed to install dependencies ${deployResult.stdout} ${deployResult.stderr}`
+      );
   }
   const deployResult = await shellExec(
     `cd ${tmpDir} && GENEZIO_TOKEN=${token} genezio deploy`
-  ).catch((e) => {
+  ).catch(e => {
     console.error("Failed to deploy", e);
     return null;
   });
 
   if (!deployResult || deployResult.code !== 0) {
-    return {
-      statusCode: "500",
-      body: `Failed to deploy ${deployResult?.stdout} ${deployResult?.stderr}`,
-    };
+    return res
+      .status(500)
+      .send(`Failed to deploy ${deployResult.stdout} ${deployResult.stderr}`);
   }
 
-  return {
-    statusCode: "200",
-    body: "Deployed successfully",
-  };
+  return res.status(200).send("Deployed successfully");
 });
-export async function createTemporaryFolder(): Promise<string> {
+export async function createTemporaryFolder() {
   return new Promise((resolve, reject) => {
+    // eslint-disable-next-line no-undef
     const folderName = `genezio-${process.pid}`;
 
     if (!fs.existsSync(path.join(os.tmpdir(), folderName))) {
@@ -82,7 +80,7 @@ export async function createTemporaryFolder(): Promise<string> {
       fs.rmSync(tempFolder, { recursive: true });
     }
 
-    fs.mkdir(tempFolder, (error) => {
+    fs.mkdir(tempFolder, error => {
       if (error) {
         reject(error);
       }
@@ -93,11 +91,11 @@ export async function createTemporaryFolder(): Promise<string> {
 }
 
 export function writeToFile(
-  folderPath: string,
-  filename: string,
-  content: string | NodeJS.ArrayBufferView,
+  folderPath,
+  filename,
+  content,
   createPathIfNeeded = false
-): Promise<void> {
+) {
   return new Promise((resolve, reject) => {
     const fullPath = path.join(folderPath, filename);
 
@@ -106,7 +104,7 @@ export function writeToFile(
     }
 
     // create the file if it doesn't exist
-    fs.writeFile(fullPath, content, function (error) {
+    fs.writeFile(fullPath, content, function(error) {
       if (error) {
         reject(error);
         return;
