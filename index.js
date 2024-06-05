@@ -8,6 +8,10 @@ const app = express();
 
 app.use(express.json());
 
+app.get("/healthcheck", (req, res) => {
+  res.status(200).send("OK");
+});
+
 app.post("/deploy", async (req, res) => {
   const { body } = req;
 
