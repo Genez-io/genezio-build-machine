@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
-import shellExec from "shell-exec";
+import { exec } from "child_process";
 import os from "os";
 
 const app = express();
@@ -42,19 +42,26 @@ app.post("/deploy", async (req, res) => {
 
   // deploy the code
   // npm i
-  const installResult = await shellExec(`cd ${tmpDir} && npm i`).catch(e => {
+  console.log("Installing dependencies");
+  const installResult = await runNewProcessWithResult(
+    `npm i`,
+    tmpDir
+  ).catch(e => {
     console.error("Failed to install dependencies", e);
     return null;
   });
-  if (!installResult || installResult.code !== 0) {
+  if (!installResult) {
     return res
       .status(500)
       .send(
-        `Failed to install dependencies ${deployResult.stdout} ${deployResult.stderr}`
+        `Failed to install dependencies ${installResult.stdout} ${installResult.stderr}`
       );
   }
-  const deployResult = await shellExec(
-    `cd ${tmpDir} && GENEZIO_TOKEN=${token} genezio deploy`
+  console.log("Installed dependencies");
+  console.log("Deploying...");
+  const deployResult = await runNewProcessWithResult(
+    `GENEZIO_TOKEN=${token} genezio deploy`,
+    tmpDir
   ).catch(e => {
     console.error("Failed to deploy", e);
     return null;
@@ -65,6 +72,7 @@ app.post("/deploy", async (req, res) => {
       .status(500)
       .send(`Failed to deploy ${deployResult.stdout} ${deployResult.stderr}`);
   }
+  console.log("Deployed");
 
   return res.status(200).send("Deployed successfully");
 });
@@ -122,3 +130,17 @@ export function writeToFile(
 app.listen(8080, () => {
   console.log("Server running on port 8080");
 });
+
+export function runNewProcessWithResult(command, cwd) {
+  return new Promise(function(resolve) {
+    exec(command, { cwd }, (err, stdout, stderr) => {
+      console.log("stdout", stdout);
+      console.log("stderr", stderr);
+      if (err) {
+        resolve({ code: err.code, stdout, stderr });
+      } else {
+        resolve({ code: 0, stdout, stderr });
+      }
+    });
+  });
+}
