@@ -6,6 +6,14 @@ import os from "os";
 
 const app = express();
 
+// allow all cors
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
+  res.header("Access-Control-Allow-Headers", "*");
+  next();
+});
+
 app.use(express.json());
 
 app.get("/healthcheck", (req, res) => {
