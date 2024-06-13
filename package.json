@@ -10,7 +10,8 @@
   "type": "module",
   "dependencies": {
     "express": "^4.19.2",
-    "shell-exec": "^1.1.2"
+    "shell-exec": "^1.1.2",
+    "yaml-transmute": "^0.0.7"
   },
   "prettier": {
     "tabWidth": 2

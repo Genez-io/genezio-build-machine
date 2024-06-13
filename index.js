@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import { exec } from "child_process";
 import os from "os";
+import { parse, stringify } from "yaml-transmute";
 
 const app = express();
 
@@ -96,7 +97,7 @@ app.post("/github-deploy", async (req, res) => {
     return res.status(400).send("Invalid request");
   }
 
-  const { token, githubRepository } = body;
+  const { token, githubRepository, projectName } = body;
 
   if (!token || !githubRepository) {
     return res.status(400).send("Invalid request");
@@ -138,6 +139,25 @@ app.post("/github-deploy", async (req, res) => {
     return res
       .status(500)
       .send("genezio.yaml is required and it was not found in the repository");
+  }
+
+  const resDeps = await checkAndInstallDeps(tmpDir).catch(e => {
+    return null;
+  });
+
+  if (!resDeps) {
+    return res.status(500).send("Failed to install dependencies");
+  }
+
+  if (projectName) {
+    const yamlPath = path.join(tmpDir, "genezio.yaml");
+    const yamlContent = fs.readFileSync(yamlPath, "utf-8");
+    const [yaml, ctx] = parse(yamlContent);
+
+    yaml.name = projectName;
+
+    const newYamlContent = stringify(yaml, ctx);
+    fs.writeFileSync(yamlPath, newYamlContent);
   }
 
   // deploy the code
@@ -227,4 +247,28 @@ export function runNewProcessWithResult(command, cwd) {
       }
     });
   });
+}
+
+export async function checkAndInstallDeps(path) {
+  // Check if next.config.js exists
+  if (
+    fs.existsSync(`${path}/next.config.js`) ||
+    fs.existsSync(`${path}/next.config.mjs`)
+  ) {
+    console.log("Installing dependencies for next");
+    const installResult = await runNewProcessWithResult(
+      `npm i`,
+      path
+    ).catch(e => {
+      console.error("Failed to install dependencies", e);
+      return null;
+    });
+    if (!installResult) {
+      throw `Failed to install dependencies ${installResult.stdout} ${installResult.stderr}`;
+    }
+  }
+
+  console.log("DONE Installing dependencies");
+
+  return true;
 }
