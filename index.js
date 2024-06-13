@@ -87,6 +87,8 @@ app.post("/deploy", async (req, res) => {
   }
   console.log("Deployed");
 
+  cleanUp(tmpDir);
+
   return res.status(200).send("Deployed successfully");
 });
 
@@ -176,6 +178,8 @@ app.post("/github-deploy", async (req, res) => {
       .send(`Failed to deploy ${deployResult.stdout} ${deployResult.stderr}`);
   }
   console.log("Deployed");
+
+  cleanUp(tmpDir);
 
   return res.status(200).send("Deployed successfully");
 });
@@ -271,4 +275,8 @@ export async function checkAndInstallDeps(path) {
   console.log("DONE Installing dependencies");
 
   return true;
+}
+
+async function cleanUp(path) {
+  fs.rmSync(path, { recursive: true });
 }
