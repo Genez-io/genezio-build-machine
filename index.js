@@ -33,6 +33,10 @@ app.post("/deploy", async (req, res) => {
     return res.status(400).send("Invalid request");
   }
 
+  if (!code["genezio.yaml"]) {
+    return res.status(400).send("genezio.yaml is required");
+  }
+
   // create a temporary directory
   const tmpDir = await createTemporaryFolder();
 
@@ -84,6 +88,78 @@ app.post("/deploy", async (req, res) => {
 
   return res.status(200).send("Deployed successfully");
 });
+
+app.post("/github-deploy", async (req, res) => {
+  const { body } = req;
+
+  if (!body) {
+    return res.status(400).send("Invalid request");
+  }
+
+  const { token, githubRepository } = body;
+
+  if (!token || !githubRepository) {
+    return res.status(400).send("Invalid request");
+  }
+
+  // create a temporary directory
+  const tmpDir = await createTemporaryFolder();
+
+  // check if the repository and check if 200
+  const resCheckRepo = await fetch(githubRepository).catch(e => {
+    console.error("Failed to fetch repository", e);
+    return null;
+  });
+  if (!resCheckRepo || resCheckRepo.status !== 200) {
+    return res
+      .status(500)
+      .send("Failed to fetch the repository. It may not exist or is private");
+  }
+
+  // clone the repository
+  console.log("Cloning repository");
+  const cloneResult = await runNewProcessWithResult(
+    `git clone ${githubRepository} .`,
+    tmpDir
+  ).catch(e => {
+    console.error("Failed to clone repository", e);
+    return null;
+  });
+
+  if (!cloneResult || cloneResult.code !== 0) {
+    return res
+      .status(500)
+      .send(
+        `Failed to clone repository ${cloneResult.stdout} ${cloneResult.stderr}`
+      );
+  }
+
+  if (!fs.existsSync(path.join(tmpDir, "genezio.yaml"))) {
+    return res
+      .status(500)
+      .send("genezio.yaml is required and it was not found in the repository");
+  }
+
+  // deploy the code
+  console.log("Deploying...");
+  const deployResult = await runNewProcessWithResult(
+    `GENEZIO_TOKEN=${token} genezio deploy`,
+    tmpDir
+  ).catch(e => {
+    console.error("Failed to deploy", e);
+    return null;
+  });
+
+  if (!deployResult || deployResult.code !== 0) {
+    return res
+      .status(500)
+      .send(`Failed to deploy ${deployResult.stdout} ${deployResult.stderr}`);
+  }
+  console.log("Deployed");
+
+  return res.status(200).send("Deployed successfully");
+});
+
 export async function createTemporaryFolder() {
   return new Promise((resolve, reject) => {
     // eslint-disable-next-line no-undef
