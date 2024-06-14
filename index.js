@@ -73,6 +73,7 @@ app.post("/deploy", async (req, res) => {
     return null;
   });
   if (!installResult) {
+    await cleanUp(tmpDir);
     return res
       .status(500)
       .send(
@@ -90,13 +91,14 @@ app.post("/deploy", async (req, res) => {
   });
 
   if (!deployResult || deployResult.code !== 0) {
+    await cleanUp(tmpDir);
     return res
       .status(500)
       .send(`Failed to deploy ${deployResult.stdout} ${deployResult.stderr}`);
   }
   console.log("Deployed");
 
-  cleanUp(tmpDir);
+  await cleanUp(tmpDir);
 
   return res.status(200).send("Deployed successfully");
 });
@@ -157,6 +159,7 @@ app.post("/github-deploy", async (req, res) => {
   });
 
   if (!resDeps) {
+    await cleanUp(tmpDir);
     return res.status(500).send("Failed to install dependencies");
   }
 
@@ -182,13 +185,14 @@ app.post("/github-deploy", async (req, res) => {
   });
 
   if (!deployResult || deployResult.code !== 0) {
+    await cleanUp(tmpDir);
     return res
       .status(500)
       .send(`Failed to deploy ${deployResult.stdout} ${deployResult.stderr}`);
   }
   console.log("Deployed");
 
-  cleanUp(tmpDir);
+  await cleanUp(tmpDir);
 
   return res.status(200).send("Deployed successfully");
 });
