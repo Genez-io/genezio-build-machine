@@ -119,6 +119,7 @@ app.post("/github-deploy", async (req, res) => {
 
   // create a temporary directory
   const tmpDir = await createTemporaryFolder();
+  console.log("Created temporary directory", tmpDir);
 
   // check if the repository and check if 200
   const resCheckRepo = await fetch(githubRepository).catch(e => {
