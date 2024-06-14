@@ -15,6 +15,15 @@ app.use((req, res, next) => {
   next();
 });
 
+// change timeout to 10 minutes
+app.use((req, res, next) => {
+  res.setTimeout(600000, () => {
+    console.log("Request has timed out.");
+    res.send(408);
+  });
+  next();
+});
+
 app.use(express.json());
 
 app.get("/healthcheck", (req, res) => {
