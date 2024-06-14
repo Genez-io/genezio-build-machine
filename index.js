@@ -49,6 +49,7 @@ app.post("/deploy", async (req, res) => {
 
   // create a temporary directory
   const tmpDir = await createTemporaryFolder();
+  console.log("Created temporary directory", tmpDir);
 
   // get all keys of code
   await Promise.all([
