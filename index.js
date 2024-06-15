@@ -52,7 +52,7 @@ app.post("/deploy", async (req, res) => {
   console.log("Created temporary directory", tmpDir);
 
   // get all keys of code
-  await Promise.all([
+  const resAll = await Promise.all([
     ...Object.keys(code).map(async key => {
       const codeFile = code[key];
 
@@ -60,8 +60,17 @@ app.post("/deploy", async (req, res) => {
       const fileName = key.split("/").pop();
       const finalPath = path.join(tmpDir, ...key.split("/").slice(0, -1));
       await writeToFile(finalPath, fileName, codeFile, true);
+      return true;
     })
-  ]);
+  ]).catch(e => {
+    console.error("Failed to write files", e);
+    return null;
+  });
+
+  if (!resAll) {
+    await cleanUp(tmpDir);
+    return res.status(500).send("Failed to write files");
+  }
 
   // deploy the code
   // npm i
@@ -99,7 +108,9 @@ app.post("/deploy", async (req, res) => {
   }
   console.log("Deployed");
 
-  await cleanUp(tmpDir);
+  await cleanUp(tmpDir).catch(e => {
+    console.error("Failed to clean up", e);
+  });
 
   return res.status(200).send("Deployed successfully");
 });
@@ -161,19 +172,26 @@ app.post("/github-deploy", async (req, res) => {
   });
 
   if (!resDeps) {
-    await cleanUp(tmpDir);
+    await cleanUp(tmpDir).catch(e => {
+      console.error("Failed to clean up", e);
+    });
     return res.status(500).send("Failed to install dependencies");
   }
 
-  if (projectName) {
-    const yamlPath = path.join(tmpDir, "genezio.yaml");
-    const yamlContent = fs.readFileSync(yamlPath, "utf-8");
-    const [yaml, ctx] = parse(yamlContent);
+  try {
+    if (projectName) {
+      const yamlPath = path.join(tmpDir, "genezio.yaml");
+      const yamlContent = fs.readFileSync(yamlPath, "utf-8");
+      const [yaml, ctx] = parse(yamlContent);
 
-    yaml.name = projectName;
+      yaml.name = projectName;
 
-    const newYamlContent = stringify(yaml, ctx);
-    fs.writeFileSync(yamlPath, newYamlContent);
+      const newYamlContent = stringify(yaml, ctx);
+      fs.writeFileSync(yamlPath, newYamlContent);
+    }
+  } catch (e) {
+    console.error("Failed to update genezio.yaml", e);
+    return res.status(500).send("Failed to update genezio.yaml");
   }
 
   // deploy the code
@@ -187,7 +205,9 @@ app.post("/github-deploy", async (req, res) => {
   });
 
   if (!deployResult || deployResult.code !== 0) {
-    await cleanUp(tmpDir);
+    await cleanUp(tmpDir).catch(e => {
+      console.error("Failed to clean up", e);
+    });
     return res
       .status(500)
       .send(`Failed to deploy ${deployResult.stdout} ${deployResult.stderr}`);
