@@ -47,6 +47,8 @@ app.post("/deploy", async (req, res) => {
     return res.status(400).send("genezio.yaml is required");
   }
 
+  console.log("Deploying code");
+
   // create a temporary directory
   const tmpDir = await createTemporaryFolder();
   console.log("Created temporary directory", tmpDir);
@@ -112,6 +114,7 @@ app.post("/deploy", async (req, res) => {
     console.error("Failed to clean up", e);
   });
 
+  console.log("DONE Deploying, sending response");
   return res.status(200).send("Deployed successfully");
 });
 
@@ -127,6 +130,10 @@ app.post("/github-deploy", async (req, res) => {
   if (!token || !githubRepository) {
     return res.status(400).send("Invalid request");
   }
+
+  console.log("Deploying code from github");
+  console.log("Repository", githubRepository);
+  console.log("Project Name", projectName);
 
   // create a temporary directory
   const tmpDir = await createTemporaryFolder();
@@ -216,6 +223,7 @@ app.post("/github-deploy", async (req, res) => {
 
   await cleanUp(tmpDir);
 
+  console.log("DONE Deploying, sending response");
   return res.status(200).send("Deployed successfully");
 });
 
