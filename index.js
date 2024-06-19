@@ -37,7 +37,7 @@ app.post("/deploy", async (req, res) => {
     return res.status(400).send("Invalid request");
   }
 
-  const { token, code } = body;
+  const { token, code, basePath } = body;
 
   if (!token || !code) {
     return res.status(400).send("Invalid request");
@@ -50,12 +50,16 @@ app.post("/deploy", async (req, res) => {
   console.log("Deploying code");
 
   // create a temporary directory
-  const tmpDir = await createTemporaryFolder();
+  let tmpDir = await createTemporaryFolder();
+  if (basePath) {
+    tmpDir = path.join(tmpDir, basePath);
+  }
+
   console.log("Created temporary directory", tmpDir);
 
   // get all keys of code
   const resAll = await Promise.all([
-    ...Object.keys(code).map(async (key) => {
+    ...Object.keys(code).map(async key => {
       const codeFile = code[key];
 
       // get fileName from key
@@ -63,8 +67,8 @@ app.post("/deploy", async (req, res) => {
       const finalPath = path.join(tmpDir, ...key.split("/").slice(0, -1));
       await writeToFile(finalPath, fileName, codeFile, true);
       return true;
-    }),
-  ]).catch((e) => {
+    })
+  ]).catch(e => {
     console.error("Failed to write files", e);
     return null;
   });
@@ -77,12 +81,13 @@ app.post("/deploy", async (req, res) => {
   // deploy the code
   // npm i
   console.log("Installing dependencies");
-  const installResult = await runNewProcessWithResult(`npm i`, tmpDir).catch(
-    (e) => {
-      console.error("Failed to install dependencies", e);
-      return null;
-    }
-  );
+  const installResult = await runNewProcessWithResult(
+    `npm i`,
+    tmpDir
+  ).catch(e => {
+    console.error("Failed to install dependencies", e);
+    return null;
+  });
   if (!installResult) {
     await cleanUp(tmpDir);
     return res
@@ -96,7 +101,7 @@ app.post("/deploy", async (req, res) => {
   const deployResult = await runNewProcessWithResult(
     `GENEZIO_TOKEN=${token} genezio deploy`,
     tmpDir
-  ).catch((e) => {
+  ).catch(e => {
     console.error("Failed to deploy", e);
     return null;
   });
@@ -109,7 +114,7 @@ app.post("/deploy", async (req, res) => {
   }
   console.log("Deployed");
 
-  await cleanUp(tmpDir).catch((e) => {
+  await cleanUp(tmpDir).catch(e => {
     console.error("Failed to clean up", e);
   });
 
@@ -140,7 +145,7 @@ app.post("/github-deploy", async (req, res) => {
   console.log("Created temporary directory", tmpDir);
 
   // check if the repository and check if 200
-  const resCheckRepo = await fetch(githubRepository).catch((e) => {
+  const resCheckRepo = await fetch(githubRepository).catch(e => {
     console.error("Failed to fetch repository", e);
     return null;
   });
@@ -155,7 +160,7 @@ app.post("/github-deploy", async (req, res) => {
   const cloneResult = await runNewProcessWithResult(
     `git clone ${githubRepository} .`,
     tmpDir
-  ).catch((e) => {
+  ).catch(e => {
     console.error("Failed to clone repository", e);
     return null;
   });
@@ -174,12 +179,12 @@ app.post("/github-deploy", async (req, res) => {
       .send("genezio.yaml is required and it was not found in the repository");
   }
 
-  const resDeps = await checkAndInstallDeps(tmpDir).catch((e) => {
+  const resDeps = await checkAndInstallDeps(tmpDir).catch(e => {
     return null;
   });
 
   if (!resDeps) {
-    await cleanUp(tmpDir).catch((e) => {
+    await cleanUp(tmpDir).catch(e => {
       console.error("Failed to clean up", e);
     });
     return res.status(500).send("Failed to install dependencies");
@@ -207,13 +212,13 @@ app.post("/github-deploy", async (req, res) => {
   const deployResult = await runNewProcessWithResult(
     `GENEZIO_TOKEN=${token} genezio deploy`,
     tmpDir
-  ).catch((e) => {
+  ).catch(e => {
     console.error("Failed to deploy", e);
     return null;
   });
 
   if (!deployResult || deployResult.code !== 0) {
-    await cleanUp(tmpDir).catch((e) => {
+    await cleanUp(tmpDir).catch(e => {
       console.error("Failed to clean up", e);
     });
     return res
@@ -244,7 +249,7 @@ export async function createTemporaryFolder() {
       fs.rmSync(tempFolder, { recursive: true });
     }
 
-    fs.mkdir(tempFolder, (error) => {
+    fs.mkdir(tempFolder, error => {
       if (error) {
         reject(error);
       }
@@ -268,7 +273,7 @@ export function writeToFile(
     }
 
     // create the file if it doesn't exist
-    fs.writeFile(fullPath, content, function (error) {
+    fs.writeFile(fullPath, content, function(error) {
       if (error) {
         reject(error);
         return;
@@ -284,7 +289,7 @@ app.listen(8080, () => {
 });
 
 export function runNewProcessWithResult(command, cwd) {
-  return new Promise(function (resolve) {
+  return new Promise(function(resolve) {
     exec(command, { cwd }, (err, stdout, stderr) => {
       console.log("stdout", stdout);
       console.log("stderr", stderr);
@@ -304,12 +309,13 @@ export async function checkAndInstallDeps(path) {
     fs.existsSync(`${path}/next.config.mjs`)
   ) {
     console.log("Installing dependencies for next");
-    const installResult = await runNewProcessWithResult(`npm i`, path).catch(
-      (e) => {
-        console.error("Failed to install dependencies", e);
-        return null;
-      }
-    );
+    const installResult = await runNewProcessWithResult(
+      `npm i`,
+      path
+    ).catch(e => {
+      console.error("Failed to install dependencies", e);
+      return null;
+    });
     if (!installResult) {
       throw `Failed to install dependencies ${installResult.stdout} ${installResult.stderr}`;
     }
