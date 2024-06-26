@@ -123,7 +123,7 @@ app.post("/deploy", async (req, res) => {
 });
 
 app.post("/github-deploy", async (req, res) => {
-  const { body } = req;
+  const { body, basePath } = req;
 
   if (!body) {
     return res.status(400).send("Invalid request");
@@ -141,7 +141,7 @@ app.post("/github-deploy", async (req, res) => {
   console.log("Region", region);
 
   // create a temporary directory
-  const tmpDir = await createTemporaryFolder();
+  let tmpDir = await createTemporaryFolder();
   console.log("Created temporary directory", tmpDir);
 
   // check if the repository and check if 200
@@ -171,6 +171,10 @@ app.post("/github-deploy", async (req, res) => {
       .send(
         `Failed to clone repository ${cloneResult.stdout} ${cloneResult.stderr}`
       );
+  }
+
+  if (basePath) {
+    tmpDir = path.join(tmpDir, basePath);
   }
 
   if (!fs.existsSync(path.join(tmpDir, "genezio.yaml"))) {
