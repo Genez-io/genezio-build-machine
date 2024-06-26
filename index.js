@@ -4,6 +4,8 @@ import fs from "fs";
 import { exec } from "child_process";
 import os from "os";
 import { parse, stringify } from "yaml-transmute";
+import axios from "axios";
+import { uploadContentToS3, zipDirectory } from "./utils.js";
 
 const app = express();
 
@@ -135,77 +137,9 @@ app.post("/github-deploy", async (req, res) => {
     return res.status(400).send("Invalid request");
   }
 
-  console.log("Deploying code from github");
-  console.log("Repository", githubRepository);
-  console.log("Project Name", projectName);
-  console.log("Region", region);
-
-  // create a temporary directory
-  const tmpDir = await createTemporaryFolder();
-  console.log("Created temporary directory", tmpDir);
-
-  // check if the repository and check if 200
-  const resCheckRepo = await fetch(githubRepository).catch(e => {
-    console.error("Failed to fetch repository", e);
-    return null;
+  const tmpDir = await prepareGithubRepository(token, githubRepository, projectName, region).catch(e => {
+    return res.status(500).send(e.message);
   });
-  if (!resCheckRepo || resCheckRepo.status !== 200) {
-    return res
-      .status(500)
-      .send("Failed to fetch the repository. It may not exist or is private");
-  }
-
-  // clone the repository
-  console.log("Cloning repository");
-  const cloneResult = await runNewProcessWithResult(
-    `git clone ${githubRepository} .`,
-    tmpDir
-  ).catch(e => {
-    console.error("Failed to clone repository", e);
-    return null;
-  });
-
-  if (!cloneResult || cloneResult.code !== 0) {
-    return res
-      .status(500)
-      .send(
-        `Failed to clone repository ${cloneResult.stdout} ${cloneResult.stderr}`
-      );
-  }
-
-  if (!fs.existsSync(path.join(tmpDir, "genezio.yaml"))) {
-    return res
-      .status(500)
-      .send("genezio.yaml is required and it was not found in the repository");
-  }
-
-  const resDeps = await checkAndInstallDeps(tmpDir).catch(e => {
-    return null;
-  });
-
-  if (!resDeps) {
-    await cleanUp(tmpDir).catch(e => {
-      console.error("Failed to clean up", e);
-    });
-    return res.status(500).send("Failed to install dependencies");
-  }
-
-  try {
-    if (projectName && region) {
-      const yamlPath = path.join(tmpDir, "genezio.yaml");
-      const yamlContent = fs.readFileSync(yamlPath, "utf-8");
-      const [yaml, ctx] = parse(yamlContent);
-
-      yaml.name = projectName;
-      yaml.region = region;
-
-      const newYamlContent = stringify(yaml, ctx);
-      fs.writeFileSync(yamlPath, newYamlContent);
-    }
-  } catch (e) {
-    console.error("Failed to update genezio.yaml", e);
-    return res.status(500).send("Failed to update genezio.yaml");
-  }
 
   // deploy the code
   console.log("Deploying...");
@@ -233,6 +167,135 @@ app.post("/github-deploy", async (req, res) => {
   return res.status(200).send("Deployed successfully");
 });
 
+app.post("/deploy-empty-project", async (req, res) => {
+  const { body } = req;
+
+  if (!body) {
+    return res.status(400).send("Invalid request");
+  }
+
+  const { token, githubRepository, projectName, region } = body;
+
+  if (!token || !githubRepository) {
+    return res.status(400).send("Invalid request");
+  }
+
+  const tmpDir = await prepareGithubRepository(token, githubRepository, projectName, region).catch(e => {
+    return res.status(500).send(e.message);
+  });
+
+  // deploy an empty project
+  await axios({
+    method: "PUT",
+    // eslint-disable-next-line no-undef
+    url: process.env.GENEZIO_API_BASE_URL + "/core/deployment",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Accept-Version": "genezio-cli/2.0.3"
+    },
+    data: {
+      projectName,
+      region,
+      cloudProvider: "genezio-cloud",
+      stage: "prod"
+    }
+  })
+  // get s3 presigned url
+  const response = await axios({
+    method: "POST",
+    // eslint-disable-next-line no-undef
+    url: `${process.env.GENEZIO_API_BASE_URL}/core/create-project-code-url`,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Accept-Version": "genezio-cli/2.0.3"
+    },
+    data: {
+      projectName,
+      region,
+      stage: "prod"
+    }
+  }).catch(e => {
+    console.error("Failed to create project code url", e);
+    return res.status(500).send("Failed to create project code url");
+  });
+  const url = response.data.presignedURL;
+  if (!url) {
+    return res.status(500).send("Failed to create project code url");
+  }
+  //upload code to S3
+  await zipDirectory(tmpDir, path.join(tmpDir, "projectCode.zip"), [
+    "**/node_modules/*",
+    "./node_modules/*",
+    "node_modules/*",
+    "**/node_modules",
+    "./node_modules",
+    "node_modules",
+    "node_modules/**",
+    "**/node_modules/**",
+    // ignore all .git files
+    "**/.git/*",
+    "./.git/*",
+    ".git/*",
+    "**/.git",
+    "./.git",
+    ".git",
+    ".git/**",
+    "**/.git/**",
+    // ignore all .next files
+    "**/.next/*",
+    "./.next/*",
+    ".next/*",
+    "**/.next",
+    "./.next",
+    ".next",
+    ".next/**",
+    "**/.next/**",
+    // ignore all .open-next files
+    "**/.open-next/*",
+    "./.open-next/*",
+    ".open-next/*",
+    "**/.open-next",
+    "./.open-next",
+    ".open-next",
+    ".open-next/**",
+    "**/.open-next/**",
+    // ignore all .vercel files
+    "**/.vercel/*",
+    "./.vercel/*",
+    ".vercel/*",
+    "**/.vercel",
+    "./.vercel",
+    ".vercel",
+    ".vercel/**",
+    "**/.vercel/**",
+    // ignore all .turbo files
+    "**/.turbo/*",
+    "./.turbo/*",
+    ".turbo/*",
+    "**/.turbo",
+    "./.turbo",
+    ".turbo",
+    ".turbo/**",
+    "**/.turbo/**",
+    // ignore all .sst files
+    "**/.sst/*",
+    "./.sst/*",
+    ".sst/*",
+    "**/.sst",
+    "./.sst",
+    ".sst",
+    ".sst/**",
+    "**/.sst/**",
+  ]);
+  await uploadContentToS3(url, path.join(tmpDir, "projectCode.zip")).catch(e => {
+    console.error("Failed to upload code to S3", e);
+    return res.status(500).send("Failed to upload code to S3");
+  });
+
+  await cleanUp(tmpDir);
+  res.status(200).send("Deployed successfully");
+});
+
 export async function createTemporaryFolder() {
   return new Promise((resolve, reject) => {
     // eslint-disable-next-line no-undef
@@ -257,6 +320,74 @@ export async function createTemporaryFolder() {
       resolve(tempFolder);
     });
   });
+}
+
+async function prepareGithubRepository(token, githubRepository, projectName, region) {
+  console.log("Deploying code from github");
+  console.log("Repository", githubRepository);
+  console.log("Project Name", projectName);
+  console.log("Region", region);
+
+  // create a temporary directory
+  const tmpDir = await createTemporaryFolder();
+  console.log("Created temporary directory", tmpDir);
+
+  // check if the repository and check if 200
+  const resCheckRepo = await fetch(githubRepository).catch(e => {
+    console.error("Failed to fetch repository", e);
+    return null;
+  });
+  if (!resCheckRepo || resCheckRepo.status !== 200) {
+    throw new Error("Failed to fetch the repository. It may not exist or is private");
+  }
+
+  // clone the repository
+  console.log("Cloning repository");
+  const cloneResult = await runNewProcessWithResult(
+    `git clone ${githubRepository} .`,
+    tmpDir
+  ).catch(e => {
+    console.error("Failed to clone repository", e);
+    return null;
+  });
+
+  if (!cloneResult || cloneResult.code !== 0) {
+    throw new Error(`Failed to clone repository ${cloneResult.stdout} ${cloneResult.stderr}`)
+  }
+
+  if (!fs.existsSync(path.join(tmpDir, "genezio.yaml"))) {
+    throw new Error("genezio.yaml is required and it was not found in the repository");
+  }
+
+  const resDeps = await checkAndInstallDeps(tmpDir).catch(e => {
+    return null;
+  });
+
+  if (!resDeps) {
+    await cleanUp(tmpDir).catch(e => {
+      console.error("Failed to clean up", e);
+    });
+    throw new Error("Failed to install dependencies");
+  }
+
+  try {
+    if (projectName && region) {
+      const yamlPath = path.join(tmpDir, "genezio.yaml");
+      const yamlContent = fs.readFileSync(yamlPath, "utf-8");
+      const [yaml, ctx] = parse(yamlContent);
+
+      yaml.name = projectName;
+      yaml.region = region;
+
+      const newYamlContent = stringify(yaml, ctx);
+      fs.writeFileSync(yamlPath, newYamlContent);
+    }
+  } catch (e) {
+    console.error("Failed to update genezio.yaml", e);
+    throw new Error("Failed to update genezio.yaml");
+  }
+
+  return tmpDir;
 }
 
 export function writeToFile(
