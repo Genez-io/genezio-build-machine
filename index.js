@@ -125,13 +125,13 @@ app.post("/deploy", async (req, res) => {
 });
 
 app.post("/github-deploy", async (req, res) => {
-  const { body, basePath } = req;
+  const { body } = req;
 
   if (!body) {
     return res.status(400).send("Invalid request");
   }
 
-  const { token, githubRepository, projectName, region } = body;
+  const { token, githubRepository, projectName, region, basePath } = body;
 
   if (!token || !githubRepository) {
     return res.status(400).send("Invalid request");
@@ -168,13 +168,13 @@ app.post("/github-deploy", async (req, res) => {
 });
 
 app.post("/deploy-empty-project", async (req, res) => {
-  const { body, basePath } = req;
+  const { body } = req;
 
   if (!body) {
     return res.status(400).send("Invalid request");
   }
 
-  const { token, githubRepository, projectName, region } = body;
+  const { token, githubRepository, projectName, region, basePath } = body;
 
   if (!token || !githubRepository) {
     return res.status(400).send("Invalid request");
