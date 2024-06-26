@@ -125,7 +125,7 @@ app.post("/deploy", async (req, res) => {
 });
 
 app.post("/github-deploy", async (req, res) => {
-  const { body } = req;
+  const { body, basePath } = req;
 
   if (!body) {
     return res.status(400).send("Invalid request");
@@ -137,7 +137,7 @@ app.post("/github-deploy", async (req, res) => {
     return res.status(400).send("Invalid request");
   }
 
-  const tmpDir = await prepareGithubRepository(token, githubRepository, projectName, region).catch(e => {
+  const tmpDir = await prepareGithubRepository(token, githubRepository, projectName, region, basePath).catch(e => {
     return res.status(500).send(e.message);
   });
 
@@ -168,7 +168,7 @@ app.post("/github-deploy", async (req, res) => {
 });
 
 app.post("/deploy-empty-project", async (req, res) => {
-  const { body } = req;
+  const { body, basePath } = req;
 
   if (!body) {
     return res.status(400).send("Invalid request");
@@ -180,7 +180,7 @@ app.post("/deploy-empty-project", async (req, res) => {
     return res.status(400).send("Invalid request");
   }
 
-  const tmpDir = await prepareGithubRepository(token, githubRepository, projectName, region).catch(e => {
+  const tmpDir = await prepareGithubRepository(token, githubRepository, projectName, region, basePath).catch(e => {
     return res.status(500).send(e.message);
   });
 
@@ -322,15 +322,19 @@ export async function createTemporaryFolder() {
   });
 }
 
-async function prepareGithubRepository(token, githubRepository, projectName, region) {
+async function prepareGithubRepository(token, githubRepository, projectName, region, basePath) {
   console.log("Deploying code from github");
   console.log("Repository", githubRepository);
   console.log("Project Name", projectName);
   console.log("Region", region);
 
   // create a temporary directory
-  const tmpDir = await createTemporaryFolder();
+  let tmpDir = await createTemporaryFolder();
   console.log("Created temporary directory", tmpDir);
+
+  if (basePath) {
+    tmpDir = path.join(tmpDir, basePath);
+  }
 
   // check if the repository and check if 200
   const resCheckRepo = await fetch(githubRepository).catch(e => {
