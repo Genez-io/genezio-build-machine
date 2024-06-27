@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import path from "path";
 import fs from "fs";
@@ -199,7 +200,10 @@ app.post("/deploy-empty-project", async (req, res) => {
       cloudProvider: "genezio-cloud",
       stage: "prod"
     }
-  })
+  }).catch(e => {
+    console.error("Failed to deploy project", e);
+    return res.status(500).send("Failed to deploy empty project");
+  });
   // get s3 presigned url
   const response = await axios({
     method: "POST",
