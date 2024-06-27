@@ -139,8 +139,12 @@ app.post("/github-deploy", async (req, res) => {
   }
 
   const tmpDir = await prepareGithubRepository(token, githubRepository, projectName, region, basePath).catch(e => {
-    return res.status(500).send(e.message);
+    return e;
   });
+
+  if (tmpDir instanceof Error) {
+    return res.status(500).send(tmpDir.message);
+  }
 
   // deploy the code
   console.log("Deploying...");
@@ -182,28 +186,34 @@ app.post("/deploy-empty-project", async (req, res) => {
   }
 
   const tmpDir = await prepareGithubRepository(token, githubRepository, projectName, region, basePath).catch(e => {
-    return res.status(500).send(e.message);
+    return e;
   });
 
+  if (tmpDir instanceof Error) {
+    return res.status(500).send(tmpDir.message);
+  }
+
   // deploy an empty project
-  await axios({
-    method: "PUT",
-    // eslint-disable-next-line no-undef
-    url: process.env.GENEZIO_API_BASE_URL + "/core/deployment",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Accept-Version": "genezio-cli/2.0.3"
-    },
-    data: {
-      projectName,
-      region,
-      cloudProvider: "genezio-cloud",
-      stage: "prod"
-    }
-  }).catch(e => {
+  try {
+    await axios({
+      method: "PUT",
+      // eslint-disable-next-line no-undef
+      url: process.env.GENEZIO_API_BASE_URL + "/core/deployment",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Accept-Version": "genezio-cli/2.0.3"
+      },
+      data: {
+        projectName,
+        region,
+        cloudProvider: "genezio-cloud",
+        stage: "prod"
+      }
+    })
+  } catch (e) {
     console.error("Failed to deploy project", e);
     return res.status(500).send("Failed to deploy empty project");
-  });
+  }
   // get s3 presigned url
   const response = await axios({
     method: "POST",
@@ -220,8 +230,11 @@ app.post("/deploy-empty-project", async (req, res) => {
     }
   }).catch(e => {
     console.error("Failed to create project code url", e);
-    return res.status(500).send("Failed to create project code url");
+    return null;
   });
+  if (!response || !response.data.presignedURL) {
+    return res.status(500).send("Failed to create project code url");
+  }
   const url = response.data.presignedURL;
   if (!url) {
     return res.status(500).send("Failed to create project code url");
@@ -291,10 +304,12 @@ app.post("/deploy-empty-project", async (req, res) => {
     ".sst/**",
     "**/.sst/**",
   ]);
-  await uploadContentToS3(url, path.join(tmpDir, "projectCode.zip")).catch(e => {
+  try {
+    await uploadContentToS3(url, path.join(tmpDir, "projectCode.zip"))
+  } catch (e) {
     console.error("Failed to upload code to S3", e);
     return res.status(500).send("Failed to upload code to S3");
-  });
+  }
 
   await cleanUp(tmpDir);
   res.status(200).send("Deployed successfully");
