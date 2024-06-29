@@ -179,7 +179,7 @@ app.post("/deploy-empty-project", async (req, res) => {
     return res.status(400).send("Invalid request");
   }
 
-  const { token, githubRepository, projectName, region, basePath } = body;
+  const { token, githubRepository, projectName, region, basePath, stack } = body;
 
   if (!token || !githubRepository) {
     return res.status(400).send("Invalid request");
@@ -207,7 +207,8 @@ app.post("/deploy-empty-project", async (req, res) => {
         projectName,
         region,
         cloudProvider: "genezio-cloud",
-        stage: "prod"
+        stage: "prod",
+        stack,
       }
     })
   } catch (e) {
