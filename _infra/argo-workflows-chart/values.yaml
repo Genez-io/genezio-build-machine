@@ -1,0 +1,10 @@
+workflow:
+  serviceAccount:
+    create: true
+    name: "argo-workflow"
+  rbac:
+    create: true
+controller:
+  configMap:
+    create: true
+    name: workflow-controller-configmap

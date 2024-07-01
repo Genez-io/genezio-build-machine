@@ -1,0 +1,16 @@
+FROM alpine/git
+WORKDIR /
+RUN git clone https://github.com/Genez-io/genezio.git
+
+
+FROM node:20.15.0-alpine3.20
+RUN apk add --no-cache unzip
+RUN apk add --no-cache git
+COPY --from=0 /genezio /genezio
+WORKDIR /genezio
+RUN npm i
+RUN npm run install-locally-dev
+
+WORKDIR /app
+COPY . .
+RUN npm install
