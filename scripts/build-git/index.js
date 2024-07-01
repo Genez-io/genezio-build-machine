@@ -1,0 +1,57 @@
+import path from "path";
+import fs from "fs";
+import os from "os";
+import { runNewProcessWithResult, unzipArchive, prepareGithubRepository } from "./utils.js";
+
+console.log("Starting build from git flow");
+console.log(process.argv)
+
+try {
+  const token = process.argv[2];
+  const githubRepository = process.argv[3];
+  const projectName = process.argv[4];
+  const region = process.argv[5];
+  const basePath = process.argv[6];
+
+  deployFromGit({
+    token, githubRepository, projectName, region, basePath
+  });
+} catch (error) {
+  console.error("Failed to deploy", error);
+}
+
+async function deployFromGit(params) {
+  console.log(params)
+  const { token, githubRepository, projectName, region, basePath } = params;
+  if (!token || !githubRepository) {
+    throw Error("Invalid request");
+  }
+
+  const tmpDir = await prepareGithubRepository(githubRepository, projectName, region, basePath)
+
+  if (tmpDir instanceof Error) {
+    console.log(tmpDir)
+    throw Error(tmpDir);
+  }
+
+  // deploy the code
+  console.log("Deploying...");
+  const deployResult = await runNewProcessWithResult(
+    `GENEZIO_TOKEN=${token} genezio deploy`,
+    tmpDir
+  ).catch(e => {
+    throw Error("Failed to deploy", e);
+  });
+
+  if (!deployResult || deployResult.code !== 0) {
+    throw Error(`Failed to deploy ${deployResult.stdout} ${deployResult.stderr}`);
+  }
+  console.log("Deployed");
+
+  console.log("DONE Deploying, sending response");
+  process.exit(0);
+}
+
+async function cleanUp(path) {
+  fs.rmSync(path, { recursive: true });
+}
