@@ -1,6 +1,8 @@
 package workflows
 
 import (
+	"build-machine/internal"
+
 	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -20,24 +22,34 @@ func GitWorkflow(token, repo, region, projectname string, basePath *string) wfv1
 	if basePath == nil {
 		basePathAS = wfv1.ParseAnyString("")
 	}
+
+	templateName := "build-git"
+	templateRef := "genezio-build-git-template"
+	generateName := "genezio-build-git-"
+	if internal.GetConfig().Env == "dev" || internal.GetConfig().Env == "local" {
+		templateName = "build-git-dev"
+		templateRef = "genezio-build-git-template-dev"
+		generateName = "genezio-build-git-dev-"
+	}
+
 	return wfv1.Workflow{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: "genezio-build-git-",
+			GenerateName: generateName,
 		},
 		Spec: wfv1.WorkflowSpec{
-			Entrypoint:         "build-git",
+			Entrypoint:         templateName,
 			ServiceAccountName: "argo-workflow",
 			Templates: []wfv1.Template{
 				{
-					Name: "build-git",
+					Name: templateName,
 					Steps: []wfv1.ParallelSteps{
 						{
 							Steps: []wfv1.WorkflowStep{
 								{
 									Name: "genezio-deploy",
 									TemplateRef: &wfv1.TemplateRef{
-										Name:     "genezio-build-git-template",
-										Template: "build-git",
+										Name:     templateRef,
+										Template: templateName,
 									},
 									Arguments: wfv1.Arguments{
 										Parameters: []wfv1.Parameter{

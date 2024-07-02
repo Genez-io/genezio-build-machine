@@ -105,8 +105,13 @@ func (d *deploymentsController) DeployFromS3Workflow(w http.ResponseWriter, r *h
 		return
 	}
 
-	// This will refresh the workflow service connection
-	wfService := service.NewWorkflowService()
+	// Temporary: This will refresh the workflow service connection
+	var wfService service.WorkflowService
+	if internal.GetConfig().Env == "prod" {
+		wfService = service.NewWorkflowService()
+	} else {
+		wfService = d.wfService
+	}
 	workflowRes := wfService.S3Workflow(body.Token, s3URLDownload, body.ProjectName, body.Region, body.Stage, body.BasePath)
 	w.Write([]byte(workflowRes))
 }
@@ -149,8 +154,13 @@ func (d *deploymentsController) DeployFromGithubWorkflow(w http.ResponseWriter, 
 		return
 	}
 
-	// This will refresh the workflow service connection
-	wfService := service.NewWorkflowService()
+	// Temporary: This will refresh the workflow service connection
+	var wfService service.WorkflowService
+	if internal.GetConfig().Env == "prod" {
+		wfService = service.NewWorkflowService()
+	} else {
+		wfService = d.wfService
+	}
 	// Call service
 	workflowRes := wfService.GithubWorkflow(
 		body.Token,
@@ -202,8 +212,13 @@ func (d *deploymentsController) DeployEmptyProjectWorkflow(w http.ResponseWriter
 		return
 	}
 
-	// This will refresh the workflow service connection
-	wfService := service.NewWorkflowService()
+	// Temporary: This will refresh the workflow service connection
+	var wfService service.WorkflowService
+	if internal.GetConfig().Env == "prod" {
+		wfService = service.NewWorkflowService()
+	} else {
+		wfService = d.wfService
+	}
 	// Call service
 	workflowRes := wfService.EmptyProjectWorkflow(
 		body.Token,

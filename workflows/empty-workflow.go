@@ -1,6 +1,8 @@
 package workflows
 
 import (
+	"build-machine/internal"
+
 	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -15,24 +17,34 @@ func EmptyWorkflow(token, repo, region, projectname string, basePath *string, st
 	if basePath == nil {
 		basePathAS = wfv1.ParseAnyString("")
 	}
+
+	templateName := "build-empty"
+	templateRef := "genezio-build-empty-template"
+	generateName := "genezio-build-empty-"
+	if internal.GetConfig().Env == "dev" || internal.GetConfig().Env == "local" {
+		templateName = "build-empty-dev"
+		templateRef = "genezio-build-empty-template-dev"
+		generateName = "genezio-build-empty-dev-"
+	}
+
 	return wfv1.Workflow{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: "genezio-build-empty-",
+			GenerateName: generateName,
 		},
 		Spec: wfv1.WorkflowSpec{
-			Entrypoint:         "build-empty",
+			Entrypoint:         templateName,
 			ServiceAccountName: "argo-workflow",
 			Templates: []wfv1.Template{
 				{
-					Name: "build-empty",
+					Name: templateName,
 					Steps: []wfv1.ParallelSteps{
 						{
 							Steps: []wfv1.WorkflowStep{
 								{
 									Name: "genezio-deploy",
 									TemplateRef: &wfv1.TemplateRef{
-										Name:     "genezio-build-empty-template",
-										Template: "build-empty",
+										Name:     templateRef,
+										Template: templateName,
 									},
 									Arguments: wfv1.Arguments{
 										Parameters: []wfv1.Parameter{

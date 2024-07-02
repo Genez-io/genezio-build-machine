@@ -8,7 +8,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-type Config struct {
+type configStruct struct {
 	ServerPort         string `key:"SERVER_PORT" default:"8080"`
 	BackendURL         string `key:"BACKEND_URL" default:"https://dev.api.genez.io"`
 	AWSAccessKeyID     string `key:"AWS_ACCESS_KEY_ID"`
@@ -24,7 +24,7 @@ type Config struct {
 	BuildClusterName       string `key:"BUILD_CLUSTER_NAME"`
 }
 
-var config *Config
+var config *configStruct
 
 func loadConfigFromEnv() {
 	err := godotenv.Load()
@@ -33,7 +33,7 @@ func loadConfigFromEnv() {
 	}
 
 	// Get array of fields for the config struct
-	config = &Config{}
+	config = &configStruct{}
 	res := reflect.VisibleFields(reflect.TypeOf(*config))
 
 	for _, field := range res {
@@ -47,7 +47,7 @@ func loadConfigFromEnv() {
 	}
 }
 
-func GetConfig() *Config {
+func GetConfig() *configStruct {
 	if config == nil {
 		loadConfigFromEnv()
 	}
