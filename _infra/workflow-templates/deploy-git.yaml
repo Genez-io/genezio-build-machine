@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: genezio-build-git-template
+spec:
+  serviceAccountName: argo-workflow
+  entrypoint: build-git
+  templates:
+  - name: build-git
+    inputs:
+      parameters:
+      - name: token
+      - name: githubRepository
+      - name: region
+      - name: projectName
+      - name: basePath
+    container:
+      image: harbor-registry.prod.cluster.genez.io/genezio/genezio-build-git
+      command: [node]
+      args: ["/app/index.js", "{{inputs.parameters.token}}", "{{inputs.parameters.githubRepository}}", "{{inputs.parameters.projectName}}", "{{inputs.parameters.region}}", "{{inputs.parameters.basePath}}"]
