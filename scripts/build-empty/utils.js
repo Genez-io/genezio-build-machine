@@ -99,7 +99,7 @@ export async function uploadContentToS3(
 }
 
 export function runNewProcessWithResult(command, cwd) {
-  return new Promise(function (resolve) {
+  return new Promise(function(resolve) {
     exec(command, { cwd, }, (err, stdout, stderr) => {
       console.log("stdout", stdout);
       console.log("stderr", stderr);
@@ -177,6 +177,12 @@ export async function prepareGithubRepository(githubRepository, projectName, reg
 
       const newYamlContent = stringify(yaml, ctx);
       fs.writeFileSync(yamlPath, newYamlContent);
+      // Replace placeholders
+      await recursiveReplace(tmpDir, [
+        ["(•◡•)project-name(•◡•)", projectName],
+        ["(•◡•)region(•◡•)", region],
+      ]);
+
     }
   } catch (e) {
     console.error("Failed to update genezio.yaml", e);
@@ -186,6 +192,30 @@ export async function prepareGithubRepository(githubRepository, projectName, reg
   return tmpDir;
 }
 
+async function recursiveReplace(
+  rootPath,
+  replacements
+) {
+  const fromStats = fs.statSync(rootPath);
+  if (fromStats.isDirectory()) {
+    // @ts-expect-error TypeScript does not infer the function type correctly
+    const files = fs.readdirSync(rootPath);
+    for (const file of files) {
+      recursiveReplace(fs, path.join(rootPath, file), replacements);
+    }
+  } else {
+    const fileContent = fs.readFileSync(rootPath, "utf8");
+
+    const newFileContent = replacements.reduce(
+      (acc, [placeholder, value]) => acc.replaceAll(placeholder, value),
+      fileContent,
+    );
+
+    if (newFileContent !== fileContent) {
+      fs.writeFileSync(rootPath, newFileContent);
+    }
+  }
+}
 
 export async function createTemporaryFolder() {
   return new Promise((resolve, reject) => {
@@ -225,7 +255,7 @@ export function writeToFile(
     }
 
     // create the file if it doesn't exist
-    fs.writeFile(fullPath, content, function (error) {
+    fs.writeFile(fullPath, content, function(error) {
       if (error) {
         reject(error);
         return;
