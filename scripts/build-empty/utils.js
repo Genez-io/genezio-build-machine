@@ -201,7 +201,7 @@ async function recursiveReplace(
     // @ts-expect-error TypeScript does not infer the function type correctly
     const files = fs.readdirSync(rootPath);
     for (const file of files) {
-      recursiveReplace(fs, path.join(rootPath, file), replacements);
+      recursiveReplace(path.join(rootPath, file), replacements);
     }
   } else {
     const fileContent = fs.readFileSync(rootPath, "utf8");
