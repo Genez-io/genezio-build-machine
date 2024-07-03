@@ -47,8 +47,21 @@ async function deployFromArchive(params) {
 
   console.log("Installed dependencies");
   console.log("Deploying...");
+  const loginResult = await runNewProcessWithResult(
+    `genezio login ${token}`,
+    tmpDir
+  ).catch(e => {
+    throw Error("Failed to deploy", e);
+  });
+  if (!loginResult || loginResult.code !== 0) {
+    console.log(loginResult.stdout)
+    console.log(loginResult.stderr)
+    throw Error(`Failed to login ${loginResult.stdout} ${loginResult.stderr}`);
+  }
+  console.log("Logged in");
+
   const deployResult = await runNewProcessWithResult(
-    `NODE_ENV=dev GENEZIO_TOKEN=${token} genezio deploy`,
+    `genezio deploy`,
     tmpDir
   ).catch(e => {
     throw Error("Failed to deploy", e);
