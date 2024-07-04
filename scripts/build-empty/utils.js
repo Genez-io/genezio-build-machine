@@ -99,7 +99,7 @@ export async function uploadContentToS3(
 }
 
 export function runNewProcessWithResult(command, cwd) {
-  return new Promise(function(resolve) {
+  return new Promise(function (resolve) {
     exec(command, { cwd, }, (err, stdout, stderr) => {
       console.log("stdout", stdout);
       console.log("stderr", stderr);
@@ -121,10 +121,6 @@ export async function prepareGithubRepository(githubRepository, projectName, reg
   // create a temporary directory
   let tmpDir = await createTemporaryFolder();
   console.log("Created temporary directory", tmpDir);
-
-  if (basePath && basePath.length > 0) {
-    tmpDir = path.join(tmpDir, basePath);
-  }
 
   // check if the repository and check if 200
   const resCheckRepo = await fetch(githubRepository).catch(e => {
@@ -149,6 +145,10 @@ export async function prepareGithubRepository(githubRepository, projectName, reg
   if (!cloneResult || cloneResult.code !== 0) {
     console.log(cloneResult)
     throw new Error(`Failed to clone repository ${cloneResult.stdout} ${cloneResult.stderr}`)
+  }
+
+  if (basePath && basePath.length > 0) {
+    tmpDir = path.join(tmpDir, basePath);
   }
 
   if (!fs.existsSync(path.join(tmpDir, "genezio.yaml"))) {
@@ -255,7 +255,7 @@ export function writeToFile(
     }
 
     // create the file if it doesn't exist
-    fs.writeFile(fullPath, content, function(error) {
+    fs.writeFile(fullPath, content, function (error) {
       if (error) {
         reject(error);
         return;
