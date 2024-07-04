@@ -178,11 +178,16 @@ export async function prepareGithubRepository(githubRepository, projectName, reg
       const yamlContent = fs.readFileSync(yamlPath, "utf-8");
       const [yaml, ctx] = parse(yamlContent);
 
+      const oldYamlName = yaml.name;
       yaml.name = projectName;
       yaml.region = region;
 
       const newYamlContent = stringify(yaml, ctx);
       fs.writeFileSync(yamlPath, newYamlContent);
+      // replace old project name in the entire project
+      await recursiveReplace(tmpDir, [
+        [`@genezio-sdk/${oldYamlName}`, `@genezio-sdk/${projectName}`],
+      ]);
     }
   } catch (e) {
     console.error("Failed to update genezio.yaml", e);
@@ -192,6 +197,30 @@ export async function prepareGithubRepository(githubRepository, projectName, reg
   return tmpDir;
 }
 
+async function recursiveReplace(
+  rootPath,
+  replacements
+) {
+  const fromStats = fs.statSync(rootPath);
+  if (fromStats.isDirectory()) {
+    // @ts-expect-error TypeScript does not infer the function type correctly
+    const files = fs.readdirSync(rootPath);
+    for (const file of files) {
+      recursiveReplace(path.join(rootPath, file), replacements);
+    }
+  } else {
+    const fileContent = fs.readFileSync(rootPath, "utf8");
+
+    const newFileContent = replacements.reduce(
+      (acc, [placeholder, value]) => acc.replaceAll(placeholder, value),
+      fileContent,
+    );
+
+    if (newFileContent !== fileContent) {
+      fs.writeFileSync(rootPath, newFileContent);
+    }
+  }
+}
 
 export async function createTemporaryFolder() {
   return new Promise((resolve, reject) => {

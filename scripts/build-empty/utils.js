@@ -172,15 +172,15 @@ export async function prepareGithubRepository(githubRepository, projectName, reg
       const yamlContent = fs.readFileSync(yamlPath, "utf-8");
       const [yaml, ctx] = parse(yamlContent);
 
+      const oldYamlName = yaml.name;
       yaml.name = projectName;
       yaml.region = region;
 
       const newYamlContent = stringify(yaml, ctx);
       fs.writeFileSync(yamlPath, newYamlContent);
-      // Replace placeholders
+      // replace old project name in the entire project
       await recursiveReplace(tmpDir, [
-        ["(•◡•)project-name(•◡•)", projectName],
-        ["(•◡•)region(•◡•)", region],
+        [`@genezio-sdk/${oldYamlName}`, `@genezio-sdk/${projectName}`],
       ]);
 
     }
