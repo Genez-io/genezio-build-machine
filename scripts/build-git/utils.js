@@ -122,10 +122,6 @@ export async function prepareGithubRepository(githubRepository, projectName, reg
   let tmpDir = await createTemporaryFolder();
   console.log("Created temporary directory", tmpDir);
 
-  if (basePath && basePath.length > 0) {
-    tmpDir = path.join(tmpDir, basePath);
-  }
-
   // check if the repository and check if 200
   const resCheckRepo = await fetch(githubRepository).catch(e => {
     console.error("Failed to fetch repository", e);
@@ -149,6 +145,10 @@ export async function prepareGithubRepository(githubRepository, projectName, reg
   if (!cloneResult || cloneResult.code !== 0) {
     console.log(cloneResult)
     throw new Error(`Failed to clone repository ${cloneResult.stdout} ${cloneResult.stderr}`)
+  }
+ 
+  if (basePath && basePath.length > 0) {
+    tmpDir = path.join(tmpDir, basePath);
   }
 
   if (!fs.existsSync(path.join(tmpDir, "genezio.yaml"))) {
