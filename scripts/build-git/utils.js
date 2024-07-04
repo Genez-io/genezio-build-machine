@@ -152,7 +152,13 @@ export async function prepareGithubRepository(githubRepository, projectName, reg
   }
 
   if (!fs.existsSync(path.join(tmpDir, "genezio.yaml"))) {
-    throw new Error("genezio.yaml is required and it was not found in the repository");
+    // create file
+    const content = `name: ${projectName}\nregion: ${region}\nyamlVersion: 2\n`;
+
+    await writeToFile(tmpDir, "genezio.yaml", content, true).catch(e => {
+        console.error("Failed to create genezio.yaml", e);
+        throw new Error("Failed to create genezio.yaml");
+    });
   }
 
   const resDeps = await checkAndInstallDeps(tmpDir).catch(e => {
