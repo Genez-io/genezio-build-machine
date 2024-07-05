@@ -1,4 +1,4 @@
-import fs from "fs";
+import fs, { mkdir } from "fs";
 import archiver from "archiver";
 import https from "https";
 import { exec } from "child_process";
@@ -122,10 +122,6 @@ export async function prepareGithubRepository(githubRepository, projectName, reg
   let tmpDir = await createTemporaryFolder();
   console.log("Created temporary directory", tmpDir);
 
-  if (basePath && basePath.length > 0) {
-    tmpDir = path.join(tmpDir, basePath);
-  }
-
   // check if the repository and check if 200
   const resCheckRepo = await fetch(githubRepository).catch(e => {
     console.error("Failed to fetch repository", e);
@@ -151,13 +147,16 @@ export async function prepareGithubRepository(githubRepository, projectName, reg
     throw new Error(`Failed to clone repository ${cloneResult.stdout} ${cloneResult.stderr}`)
   }
 
+  if (basePath && basePath.length > 0) {
+    tmpDir = path.join(tmpDir, basePath);
+  }
   if (!fs.existsSync(path.join(tmpDir, "genezio.yaml"))) {
     // create file
     const content = `name: ${projectName}\nregion: ${region}\nyamlVersion: 2\n`;
 
     await writeToFile(tmpDir, "genezio.yaml", content, true).catch(e => {
-        console.error("Failed to create genezio.yaml", e);
-        throw new Error("Failed to create genezio.yaml");
+      console.error("Failed to create genezio.yaml", e);
+      throw new Error("Failed to create genezio.yaml");
     });
   }
 

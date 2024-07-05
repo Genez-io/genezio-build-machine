@@ -12,10 +12,10 @@ func EmptyWorkflow(token, repo, region, projectname string, basePath *string, st
 	repoAS := wfv1.ParseAnyString(repo)
 	regionAS := wfv1.ParseAnyString(region)
 	projectnameAS := wfv1.ParseAnyString(projectname)
-	basePathAS := wfv1.ParseAnyString(basePath)
+	basePathAS := wfv1.ParseAnyString("")
 
-	if basePath == nil {
-		basePathAS = wfv1.ParseAnyString("")
+	if basePath != nil {
+		basePathAS = wfv1.ParseAnyString(*basePath)
 	}
 
 	templateName := "build-empty"

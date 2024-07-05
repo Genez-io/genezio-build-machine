@@ -13,6 +13,7 @@ try {
   const region = process.argv[5];
   const basePath = process.argv[6];
 
+  console.log(process.argv)
   deployFromGit({
     token, githubRepository, projectName, region, basePath
   });
