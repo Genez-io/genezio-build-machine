@@ -111,17 +111,16 @@ func (w *workflowService) GithubWorkflow(token string, githubRepository string, 
 // S3Workflow implements WorkflowService.
 func (w *workflowService) S3Workflow(token, S3URL, projectName, region string, stage, basePath *string) string {
 	renderedWorkflow := workflows.S3Workflow(token, S3URL)
-	report, err := w.submitWorkflow(renderedWorkflow)
-
+	report, err_wf := w.submitWorkflow(renderedWorkflow)
+	reportBytes, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
-		return err.Error()
+		return err_wf.Error()
+	}
+	if err_wf != nil {
+		return string(reportBytes)
 	}
 
 	// Pretty print json report
-	reportBytes, err := json.MarshalIndent(report, "", "  ")
-	if err != nil {
-		return err.Error()
-	}
 
 	fmt.Println(string(reportBytes))
 	return string(reportBytes)
@@ -150,7 +149,13 @@ func (w *workflowService) submitWorkflow(workflowRender wfv1.Workflow) (Workflow
 			continue
 		}
 		if wf.Status.Failed() {
-			return WorkflowReport{}, fmt.Errorf("workflow %s %s at %v. Message: %s", wf.Name, wf.Status.Phase, wf.Status.FinishedAt, wf.Status.Message)
+			return WorkflowReport{
+				WorkflowName:     wf.Name,
+				Phase:            string(wf.Status.Phase),
+				FinishedAt:       wf.Status.FinishedAt,
+				Message:          wf.Status.Message,
+				ResourceDuration: wf.Status.ResourcesDuration.String(),
+			}, fmt.Errorf("workflow %s %s at %v. Message: %s", wf.Name, wf.Status.Phase, wf.Status.FinishedAt, wf.Status.Message)
 		}
 
 		if !wf.Status.FinishedAt.IsZero() {
