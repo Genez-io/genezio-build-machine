@@ -161,9 +161,6 @@ async function deployEmpty(params) {
     console.error("Failed to upload code to S3", e);
     throw Error("Failed to upload code to S3");
   }
- 
-  cleanUp(tmpDir);
-  cleanUp("tmp");
 
   console.log("Deployed successfully");
   process.exit(0);
