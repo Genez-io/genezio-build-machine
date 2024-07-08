@@ -1,26 +1,22 @@
 import path from "path";
-import fs, { mkdir, mkdirSync } from "fs";
-import os from "os";
-import { runNewProcessWithResult, unzipArchive, prepareGithubRepository, zipDirectory, uploadContentToS3 } from "./utils.js";
+import fs from "fs";
+import { mkdirSync } from "fs";
+import { prepareGithubRepository, zipDirectory, uploadContentToS3 } from "./utils.js";
 import axios from "axios";
 
 console.log("Starting empty project flow");
 console.log(process.argv)
 
-try {
-  const token = process.argv[2];
-  const githubRepository = process.argv[3];
-  const projectName = process.argv[4];
-  const region = process.argv[5];
-  const stack = process.argv[6];
-  const basePath = process.argv[7];
+const token = process.argv[2];
+const githubRepository = process.argv[3];
+const projectName = process.argv[4];
+const region = process.argv[5];
+const stack = process.argv[6];
+const basePath = process.argv[7];
 
-  deployEmpty({
+deployEmpty({
     token, githubRepository, projectName, region, stack, basePath
-  });
-} catch (error) {
-  console.error("Failed to deploy", error);
-}
+});
 
 async function deployEmpty(params) {
   console.log(params)
@@ -34,7 +30,6 @@ async function deployEmpty(params) {
     stackParsed = stack.split(",")
   }
 
-  console.log(stackParsed)
   const tmpDir = await prepareGithubRepository(githubRepository, projectName, region, basePath).catch(e => {
     return e;
   });
@@ -166,7 +161,14 @@ async function deployEmpty(params) {
     console.error("Failed to upload code to S3", e);
     throw Error("Failed to upload code to S3");
   }
+ 
+  cleanUp(tmpDir);
+  cleanUp("tmp");
 
   console.log("Deployed successfully");
   process.exit(0);
+}
+
+async function cleanUp(path) {
+  fs.rmSync(path, { recursive: true });
 }

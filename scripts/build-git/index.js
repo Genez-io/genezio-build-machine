@@ -6,20 +6,16 @@ import { runNewProcessWithResult, unzipArchive, prepareGithubRepository } from "
 console.log("Starting build from git flow");
 console.log(process.argv)
 
-try {
-  const token = process.argv[2];
-  const githubRepository = process.argv[3];
-  const projectName = process.argv[4];
-  const region = process.argv[5];
-  const basePath = process.argv[6];
+const token = process.argv[2];
+const githubRepository = process.argv[3];
+const projectName = process.argv[4];
+const region = process.argv[5];
+const basePath = process.argv[6];
 
-  console.log(process.argv)
-  deployFromGit({
+console.log(process.argv)
+deployFromGit({
     token, githubRepository, projectName, region, basePath
-  });
-} catch (error) {
-  console.error("Failed to deploy", error);
-}
+});
 
 async function deployFromGit(params) {
   console.log(params)

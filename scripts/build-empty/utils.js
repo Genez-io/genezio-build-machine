@@ -151,37 +151,24 @@ export async function prepareGithubRepository(githubRepository, projectName, reg
     tmpDir = path.join(tmpDir, basePath);
   }
 
-  if (!fs.existsSync(path.join(tmpDir, "genezio.yaml"))) {
-    throw new Error("genezio.yaml is required and it was not found in the repository");
-  }
-
-  const resDeps = await checkAndInstallDeps(tmpDir).catch(e => {
-    return null;
-  });
-
-  if (!resDeps) {
-    await cleanUp(tmpDir).catch(e => {
-      console.error("Failed to clean up", e);
-    });
-    throw new Error("Failed to install dependencies");
-  }
-
   try {
-    if (projectName && region) {
+    if (projectName && region && fs.existsSync(path.join(tmpDir, "genezio.yaml"))) {
       const yamlPath = path.join(tmpDir, "genezio.yaml");
       const yamlContent = fs.readFileSync(yamlPath, "utf-8");
       const [yaml, ctx] = parse(yamlContent);
 
-      const oldYamlName = yaml.name;
-      yaml.name = projectName;
-      yaml.region = region;
+      if (yaml.classes) {
+        const oldYamlName = yaml.name;
+        yaml.name = projectName;
+        yaml.region = region;
 
-      const newYamlContent = stringify(yaml, ctx);
-      fs.writeFileSync(yamlPath, newYamlContent);
-      // replace old project name in the entire project
-      await recursiveReplace(tmpDir, [
-        [`@genezio-sdk/${oldYamlName}`, `@genezio-sdk/${projectName}`],
-      ]);
+        const newYamlContent = stringify(yaml, ctx);
+        fs.writeFileSync(yamlPath, newYamlContent);
+        // replace old project name in the entire project
+        await recursiveReplace(tmpDir, [
+          [`@genezio-sdk/${oldYamlName}`, `@genezio-sdk/${projectName}`],
+        ]);
+      }
 
     }
   } catch (e) {

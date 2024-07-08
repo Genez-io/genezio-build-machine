@@ -2,20 +2,15 @@ import path from "path";
 import fs from "fs";
 import os from "os";
 import { runNewProcessWithResult, unzipArchive, } from "./utils.js";
-import shellExec from "shell-exec";
 
 console.log("Starting build from s3 flow");
 console.log(process.argv)
 
 const token = process.argv[2];
 
-try {
-  deployFromArchive({
+deployFromArchive({
     token
-  });
-} catch (error) {
-  console.error("Failed to deploy", error);
-}
+});
 
 async function deployFromArchive(params) {
   const tmpDir = "/tmp/projectCode"

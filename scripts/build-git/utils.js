@@ -1,4 +1,4 @@
-import fs, { mkdir } from "fs";
+import fs from "fs";
 import archiver from "archiver";
 import https from "https";
 import { exec } from "child_process";
@@ -30,10 +30,6 @@ export async function zipDirectory(
     stream.on("close", () => resolve());
     archive.finalize();
   });
-}
-
-function delay(time) {
-  return new Promise(resolve => setTimeout(resolve, time));
 }
 
 export async function unzipArchive(
