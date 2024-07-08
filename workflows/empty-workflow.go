@@ -7,17 +7,22 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func EmptyWorkflow(token, repo, region, projectname string, basePath *string, stack []string) wfv1.Workflow {
+func EmptyWorkflow(token, repo, region, projectname string, basePath *string, stack *string) wfv1.Workflow {
 	tokenAS := wfv1.ParseAnyString(token)
 	repoAS := wfv1.ParseAnyString(repo)
 	regionAS := wfv1.ParseAnyString(region)
 	projectnameAS := wfv1.ParseAnyString(projectname)
+	stackAS := wfv1.ParseAnyString("[]")
 	basePathAS := wfv1.ParseAnyString("")
+
 
 	if basePath != nil {
 		basePathAS = wfv1.ParseAnyString(*basePath)
 	}
 
+	if stack != nil {
+		stackAS = wfv1.ParseAnyString(*stack)
+	}
 	templateName := "build-empty"
 	templateRef := "genezio-build-empty-template"
 	generateName := "genezio-build-empty-"
@@ -67,6 +72,10 @@ func EmptyWorkflow(token, repo, region, projectname string, basePath *string, st
 											{
 												Name:  "basePath",
 												Value: &basePathAS,
+											},
+											{
+												Name:  "stack",
+												Value: &stackAS,
 											},
 										},
 									},

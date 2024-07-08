@@ -1,5 +1,5 @@
 import path from "path";
-import fs from "fs";
+import fs, { mkdir, mkdirSync } from "fs";
 import os from "os";
 import { runNewProcessWithResult, unzipArchive, prepareGithubRepository, zipDirectory, uploadContentToS3 } from "./utils.js";
 import axios from "axios";
@@ -12,10 +12,11 @@ try {
   const githubRepository = process.argv[3];
   const projectName = process.argv[4];
   const region = process.argv[5];
-  const basePath = process.argv[6];
+  const stack = process.argv[6];
+  const basePath = process.argv[7];
 
   deployEmpty({
-    token, githubRepository, projectName, region, basePath
+    token, githubRepository, projectName, region, stack, basePath
   });
 } catch (error) {
   console.error("Failed to deploy", error);
@@ -23,11 +24,17 @@ try {
 
 async function deployEmpty(params) {
   console.log(params)
-  const { token, githubRepository, projectName, region, basePath } = params;
+  const { token, githubRepository, projectName, region, stack, basePath } = params;
   if (!token || !githubRepository) {
     throw Error("Invalid request");
   }
 
+  let stackParsed = [];
+  if (stack !== "[]") {
+    stackParsed = stack.split(",")
+  }
+
+  console.log(stackParsed)
   const tmpDir = await prepareGithubRepository(githubRepository, projectName, region, basePath).catch(e => {
     return e;
   });
@@ -51,7 +58,7 @@ async function deployEmpty(params) {
         region,
         cloudProvider: "genezio-cloud",
         stage: "prod",
-        stack: [],
+        stack: stackParsed,
       }
     })
   } catch (e) {
@@ -84,7 +91,12 @@ async function deployEmpty(params) {
     throw Error("Failed to create project code url");
   }
   //upload code to S3
-  await zipDirectory(tmpDir, path.join(tmpDir, "projectCode.zip"), [
+  const zipdir = path.join("tmp", "projectCode");
+  const zipdirfile = path.join(zipdir, "projectCode.zip");
+  mkdirSync(zipdir, { recursive: true });
+  await zipDirectory(tmpDir, zipdirfile, [
+    "projectCode.zip",
+    "**/projectCode.zip",
     "**/node_modules/*",
     "./node_modules/*",
     "node_modules/*",
@@ -149,7 +161,7 @@ async function deployEmpty(params) {
     "**/.sst/**",
   ]);
   try {
-    await uploadContentToS3(url, path.join(tmpDir, "projectCode.zip"))
+    await uploadContentToS3(url, zipdirfile)
   } catch (e) {
     console.error("Failed to upload code to S3", e);
     throw Error("Failed to upload code to S3");

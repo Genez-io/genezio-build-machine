@@ -36,7 +36,7 @@ type WorkflowService interface {
 	// GithubWorkflow is a function that runs a workflow with input code from Github
 	GithubWorkflow(token, githubRepository string, projectName, region, basePath *string) string
 	// EmptyProjectWorkflow is a function that runs a workflow with no input code
-	EmptyProjectWorkflow(token, githubRepository string, projectName, region, basePath *string, stack []string) string
+	EmptyProjectWorkflow(token, githubRepository string, projectName, region, basePath *string, stack *string) string
 }
 
 type workflowService struct {
@@ -71,7 +71,7 @@ func NewWorkflowService() WorkflowService {
 }
 
 // EmptyProjectWorkflow implements WorkflowService.
-func (w *workflowService) EmptyProjectWorkflow(token, githubRepository string, projectName, region, basePath *string, stack []string) string {
+func (w *workflowService) EmptyProjectWorkflow(token, githubRepository string, projectName, region, basePath *string, stack *string) string {
 	renderedWorkflow := workflows.EmptyWorkflow(token, githubRepository, *region, *projectName, basePath, stack)
 	report, err := w.submitWorkflow(renderedWorkflow)
 
