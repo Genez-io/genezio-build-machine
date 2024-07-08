@@ -107,7 +107,7 @@ func (d *deploymentsController) DeployFromS3Workflow(w http.ResponseWriter, r *h
 
 	// Temporary: This will refresh the workflow service connection
 	var wfService service.WorkflowService
-	if internal.GetConfig().Env == "prod" {
+	if internal.GetConfig().Env != "local" {
 		wfService = service.NewWorkflowService()
 	} else {
 		wfService = d.wfService
@@ -156,7 +156,7 @@ func (d *deploymentsController) DeployFromGithubWorkflow(w http.ResponseWriter, 
 
 	// Temporary: This will refresh the workflow service connection
 	var wfService service.WorkflowService
-	if internal.GetConfig().Env == "prod" {
+	if internal.GetConfig().Env != "local" {
 		wfService = service.NewWorkflowService()
 	} else {
 		wfService = d.wfService
@@ -214,10 +214,19 @@ func (d *deploymentsController) DeployEmptyProjectWorkflow(w http.ResponseWriter
 
 	// Temporary: This will refresh the workflow service connection
 	var wfService service.WorkflowService
-	if internal.GetConfig().Env == "prod" {
+	if internal.GetConfig().Env != "local" {
 		wfService = service.NewWorkflowService()
 	} else {
 		wfService = d.wfService
+	}
+
+	// Parsed stack to csv
+	var parsedStack *string = new(string)
+	if len(body.Stack) > 0 {
+		*parsedStack = strings.Join(body.Stack, ",")
+	} else {
+		parsedStack = nil
+
 	}
 	// Call service
 	workflowRes := wfService.EmptyProjectWorkflow(
@@ -226,7 +235,7 @@ func (d *deploymentsController) DeployEmptyProjectWorkflow(w http.ResponseWriter
 		body.ProjectName,
 		body.Region,
 		body.BasePath,
-		body.Stack,
+		parsedStack,
 	)
 
 	w.Write([]byte(workflowRes))

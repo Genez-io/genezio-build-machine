@@ -27,15 +27,6 @@ async function deployFromGit(params) {
     throw Error("Invalid request");
   }
 
-  const tmpDir = await prepareGithubRepository(githubRepository, projectName, region, basePath)
-
-  if (tmpDir instanceof Error) {
-    console.log(tmpDir)
-    throw Error(tmpDir);
-  }
-
-  // deploy the code
-  console.log("Deploying...");
   const loginResult = await runNewProcessWithResult(
     `genezio login ${token}`,
     tmpDir
@@ -48,6 +39,16 @@ async function deployFromGit(params) {
     throw Error(`Failed to login ${loginResult.stdout} ${loginResult.stderr}`);
   }
   console.log("Logged in");
+
+  const tmpDir = await prepareGithubRepository(githubRepository, projectName, region, basePath)
+
+  if (tmpDir instanceof Error) {
+    console.log(tmpDir)
+    throw Error(tmpDir);
+  }
+
+  // deploy the code
+  console.log("Deploying...");
 
   const deployResult = await runNewProcessWithResult(
     `genezio deploy`,
