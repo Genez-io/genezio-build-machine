@@ -157,19 +157,16 @@ export async function prepareGithubRepository(githubRepository, projectName, reg
       const yamlContent = fs.readFileSync(yamlPath, "utf-8");
       const [yaml, ctx] = parse(yamlContent);
 
-      if (yaml.classes) {
-        const oldYamlName = yaml.name;
-        yaml.name = projectName;
-        yaml.region = region;
+      const oldYamlName = yaml.name;
+      yaml.name = projectName;
+      yaml.region = region;
 
-        const newYamlContent = stringify(yaml, ctx);
-        fs.writeFileSync(yamlPath, newYamlContent);
-        // replace old project name in the entire project
-        await recursiveReplace(tmpDir, [
-          [`@genezio-sdk/${oldYamlName}`, `@genezio-sdk/${projectName}`],
-        ]);
-      }
-
+      const newYamlContent = stringify(yaml, ctx);
+      fs.writeFileSync(yamlPath, newYamlContent);
+      // replace old project name in the entire project
+      await recursiveReplace(tmpDir, [
+        [`@genezio-sdk/${oldYamlName}`, `@genezio-sdk/${projectName}`],
+      ]);
     }
   } catch (e) {
     console.error("Failed to update genezio.yaml", e);
