@@ -14,6 +14,7 @@ spec:
       - name: region
       - name: projectName
       - name: basePath
+      - name: stack
     container:
       requests:
         cpu: 1500m
@@ -23,4 +24,4 @@ spec:
         memory: 2000Mi
       image: harbor-registry.prod.cluster.genez.io/genezio/genezio-build-empty-dev
       command: [node]
-      args: ["/app/index.js", "{{inputs.parameters.token}}", "{{inputs.parameters.githubRepository}}", "{{inputs.parameters.projectName}}", "{{inputs.parameters.region}}", "{{inputs.parameters.basePath}}"]
+      args: ["/app/index.js", "{{inputs.parameters.token}}", "{{inputs.parameters.githubRepository}}", "{{inputs.parameters.projectName}}", "{{inputs.parameters.region}}","{{inputs.parameters.stack}}","{{inputs.parameters.basePath}}"]
