@@ -14,7 +14,7 @@ const basePath = process.argv[6];
 
 console.log(process.argv)
 deployFromGit({
-    token, githubRepository, projectName, region, basePath
+  token, githubRepository, projectName, region, basePath
 });
 
 async function deployFromGit(params) {
@@ -47,7 +47,7 @@ async function deployFromGit(params) {
   console.log("Deploying...");
 
   const deployResult = await runNewProcessWithResult(
-    `genezio deploy`,
+    `CI=true genezio deploy`,
     tmpDir
   ).catch(e => {
     throw Error("Failed to deploy", e);
