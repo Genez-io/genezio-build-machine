@@ -26,7 +26,6 @@ async function deployFromGit(params) {
 
   const loginResult = await runNewProcessWithResult(
     `genezio login ${token}`,
-    tmpDir
   ).catch(e => {
     throw Error("Failed to deploy", e);
   });
@@ -54,6 +53,7 @@ async function deployFromGit(params) {
     throw Error("Failed to deploy", e);
   });
 
+  console.log(deployResult);
   if (!deployResult || deployResult.code !== 0) {
     throw Error(`Failed to deploy ${deployResult.stdout} ${deployResult.stderr}`);
   }

@@ -100,7 +100,7 @@ export function runNewProcessWithResult(command, cwd) {
       console.log("stdout", stdout);
       console.log("stderr", stderr);
       if (err) {
-        resolve({ code: err.code, stdout, stderr });
+        resolve({ code: err.code || 1, stdout, stderr });
       } else {
         resolve({ code: 0, stdout, stderr });
       }
