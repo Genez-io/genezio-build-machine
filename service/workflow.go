@@ -10,10 +10,10 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"k8s.io/apimachinery/pkg/fields"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/utils/pointer"
 
 	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	wfclientset "github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned"
@@ -23,11 +23,11 @@ import (
 )
 
 type WorkflowReport struct {
-	WorkflowName     string
-	Phase            string
-	FinishedAt       metav1.Time
-	Message          string
-	ResourceDuration string
+	JobName   string
+	Status    string
+	StartTime string
+	EndTime   string
+	Message   string
 }
 
 type WorkflowService interface {
@@ -40,7 +40,8 @@ type WorkflowService interface {
 }
 
 type workflowService struct {
-	client v1alpha1.WorkflowInterface
+	wfClient v1alpha1.WorkflowInterface
+	k8Client *kubernetes.Clientset
 }
 
 func NewWorkflowService() WorkflowService {
@@ -64,27 +65,27 @@ func NewWorkflowService() WorkflowService {
 		config = NewKubernetesConfig().Config
 	}
 	wfClient = wfclientset.NewForConfigOrDie(config).ArgoprojV1alpha1().Workflows(namespace)
-
+	clientSet, err := kubernetes.NewForConfig(config)
+	checkErr(err)
 	return &workflowService{
-		client: wfClient,
+		wfClient: wfClient,
+		k8Client: clientSet,
 	}
 }
 
 // EmptyProjectWorkflow implements WorkflowService.
 func (w *workflowService) EmptyProjectWorkflow(token, githubRepository string, projectName, region, basePath *string, stack *string) string {
 	renderedWorkflow := workflows.EmptyWorkflow(token, githubRepository, *region, *projectName, basePath, stack)
-	report, err := w.submitWorkflow(renderedWorkflow)
-
-	if err != nil {
-		return err.Error()
-	}
-
-	// Pretty print json report
+	report, err_wf := w.submitWorkflow(renderedWorkflow)
 	reportBytes, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		return err.Error()
 	}
+	if err_wf != nil {
+		return string(reportBytes)
+	}
 
+	// Pretty print json report
 	fmt.Println(string(reportBytes))
 	return string(reportBytes)
 }
@@ -92,18 +93,16 @@ func (w *workflowService) EmptyProjectWorkflow(token, githubRepository string, p
 // GithubWorkflow implements WorkflowService.
 func (w *workflowService) GithubWorkflow(token string, githubRepository string, projectName, region, basePath *string) string {
 	renderedWorkflow := workflows.GitWorkflow(token, githubRepository, *region, *projectName, basePath)
-	report, err := w.submitWorkflow(renderedWorkflow)
-
-	if err != nil {
-		return err.Error()
-	}
-
-	// Pretty print json report
+	report, err_wf := w.submitWorkflow(renderedWorkflow)
 	reportBytes, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		return err.Error()
 	}
+	if err_wf != nil {
+		return string(reportBytes)
+	}
 
+	// Pretty print json report
 	fmt.Println(string(reportBytes))
 	return string(reportBytes)
 }
@@ -114,14 +113,13 @@ func (w *workflowService) S3Workflow(token, S3URL, projectName, region string, s
 	report, err_wf := w.submitWorkflow(renderedWorkflow)
 	reportBytes, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
-		return err_wf.Error()
+		return err.Error()
 	}
 	if err_wf != nil {
 		return string(reportBytes)
 	}
 
 	// Pretty print json report
-
 	fmt.Println(string(reportBytes))
 	return string(reportBytes)
 }
@@ -134,43 +132,41 @@ func checkErr(err error) {
 
 func (w *workflowService) submitWorkflow(workflowRender wfv1.Workflow) (WorkflowReport, error) {
 	ctx := context.Background()
-	createdWf, err := w.client.Create(ctx, &workflowRender, metav1.CreateOptions{})
+	createdWf, err := w.wfClient.Create(ctx, &workflowRender, metav1.CreateOptions{})
 	checkErr(err)
 	fmt.Printf("Workflow %s submitted\n", createdWf.Name)
 
-	// wait for the workflow to complete
-	fieldSelector := fields.ParseSelectorOrDie(fmt.Sprintf("metadata.name=%s", createdWf.Name))
-	watchIf, err := w.client.Watch(ctx, metav1.ListOptions{FieldSelector: fieldSelector.String(), TimeoutSeconds: pointer.Int64(180)})
+	// list pod with workflow name
+	podIf, err := w.k8Client.CoreV1().Pods("default").Watch(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("workflows.argoproj.io/workflow=%s", createdWf.Name)})
 	errors.CheckError(err)
-	defer watchIf.Stop()
-	for next := range watchIf.ResultChan() {
-		wf, ok := next.Object.(*wfv1.Workflow)
+
+	for next := range podIf.ResultChan() {
+		if next.Object == nil {
+			continue
+		}
+		pod, ok := next.Object.(*v1.Pod)
 		if !ok {
 			continue
 		}
-		if wf.Status.Failed() {
+
+		if pod.Status.Phase == v1.PodFailed {
 			return WorkflowReport{
-				WorkflowName:     wf.Name,
-				Phase:            string(wf.Status.Phase),
-				FinishedAt:       wf.Status.FinishedAt,
-				Message:          wf.Status.Message,
-				ResourceDuration: wf.Status.ResourcesDuration.String(),
-			}, fmt.Errorf("workflow %s %s at %v. Message: %s", wf.Name, wf.Status.Phase, wf.Status.FinishedAt, wf.Status.Message)
+				JobName:   createdWf.Name,
+				Status:    string(pod.Status.Phase),
+				StartTime: pod.Status.StartTime.String(),
+				EndTime:   metav1.Now().String(),
+				Message:   fmt.Sprintf("workflow %s %s at %v. Message: %s", createdWf.Name, pod.Status.Phase, pod.Status.StartTime, pod.Status.Message),
+			}, fmt.Errorf("workflow %s %s at %v. Message: %s", createdWf.Name, pod.Status.Phase, pod.Status.StartTime, pod.Status.Message)
 		}
 
-		if !wf.Status.FinishedAt.IsZero() {
-			fmt.Printf("Workflow %s %s at %v. Message: %s.\n", wf.Name, wf.Status.Phase, wf.Status.FinishedAt, wf.Status.Message)
-			parseResourceDuration := make(map[string]string)
-			for k, v := range wf.Status.ResourcesDuration {
-				parseResourceDuration[string(k)] = v.String()
-			}
-
+		if pod.Status.Phase == v1.PodSucceeded {
+			timeNow := metav1.Now()
 			return WorkflowReport{
-				WorkflowName:     wf.Name,
-				Phase:            string(wf.Status.Phase),
-				FinishedAt:       wf.Status.FinishedAt,
-				Message:          wf.Status.Message,
-				ResourceDuration: wf.Status.ResourcesDuration.String(),
+				JobName:   createdWf.Name,
+				Status:    string(pod.Status.Phase),
+				StartTime: pod.Status.StartTime.String(),
+				EndTime:   timeNow.String(),
+				Message:   fmt.Sprintf("workflow %s %s at %v. Message: %s", createdWf.Name, pod.Status.Phase, pod.Status.StartTime, pod.Status.Message),
 			}, nil
 		}
 	}
