@@ -2,6 +2,7 @@ import path from "path";
 import fs from "fs";
 import os from "os";
 import { runNewProcessWithResult, unzipArchive, prepareGithubRepository } from "./utils.js";
+import { env } from "process";
 
 console.log("Starting build from git flow");
 console.log(process.argv)
@@ -14,7 +15,7 @@ const basePath = process.argv[6];
 
 console.log(process.argv)
 deployFromGit({
-    token, githubRepository, projectName, region, basePath
+  token, githubRepository, projectName, region, basePath
 });
 
 async function deployFromGit(params) {
@@ -25,7 +26,7 @@ async function deployFromGit(params) {
   }
 
   const loginResult = await runNewProcessWithResult(
-    `genezio login ${token}`,
+    `genezio`, ['login', token],
   ).catch(e => {
     throw Error("Failed to deploy", e);
   });
@@ -47,8 +48,12 @@ async function deployFromGit(params) {
   console.log("Deploying...");
 
   const deployResult = await runNewProcessWithResult(
-    `genezio deploy`,
-    tmpDir
+    `genezio`,
+    [`deploy`],
+    tmpDir,
+    {
+      "CI": true
+    }
   ).catch(e => {
     throw Error("Failed to deploy", e);
   });
