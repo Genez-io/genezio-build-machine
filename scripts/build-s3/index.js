@@ -9,7 +9,7 @@ console.log(process.argv)
 const token = process.argv[2];
 
 deployFromArchive({
-    token
+  token
 });
 
 async function deployFromArchive(params) {
@@ -56,7 +56,7 @@ async function deployFromArchive(params) {
   console.log("Logged in");
 
   const deployResult = await runNewProcessWithResult(
-    `genezio deploy`,
+    `CI=true genezio deploy`,
     tmpDir
   ).catch(e => {
     throw Error("Failed to deploy", e);
