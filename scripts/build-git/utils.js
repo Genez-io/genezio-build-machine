@@ -1,7 +1,7 @@
 import fs from "fs";
 import archiver from "archiver";
 import https from "https";
-import { exec } from "child_process";
+import { exec, spawn } from "child_process";
 import path from "path";
 import os from "os"
 import { parse, stringify } from "yaml-transmute";
@@ -94,17 +94,35 @@ export async function uploadContentToS3(
   });
 }
 
-export function runNewProcessWithResult(command, cwd) {
+export function runNewProcessWithResult(command, args, cwd, env) {
   return new Promise(function (resolve) {
-    exec(command, { cwd, }, (err, stdout, stderr) => {
-      console.log("stdout", stdout);
-      console.log("stderr", stderr);
-      if (err) {
-        resolve({ code: err.code || 1, stdout, stderr });
-      } else {
-        resolve({ code: 0, stdout, stderr });
-      }
+    const child = spawn(command, args, { cwd, env: { ...process.env, ...env } });
+
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (data) => {
+      stdout += data.toString();
+      console.log("stdout", data.toString());
     });
+
+    child.stderr.on('data', (data) => {
+      stderr += data.toString();
+      console.log("stderr", data.toString());
+    });
+
+    child.on('close', (code, signal) => {
+      if (`${signal}` === 'SIGSEGV') {
+        code = 0;
+      }
+      resolve({ code, stdout, stderr });
+    });
+
+    child.on('error', (err) => {
+      resolve({ code: err.code, stdout, stderr });
+    });
+
+    child.stdin.end()
   });
 }
 
@@ -130,7 +148,7 @@ export async function prepareGithubRepository(githubRepository, projectName, reg
   // clone the repository
   console.log("Cloning repository", githubRepository, tmpDir);
   const cloneResult = await runNewProcessWithResult(
-    `git clone ${githubRepository} .`,
+    `git`, ['clone', githubRepository, '.'],
     tmpDir
   ).catch(e => {
     console.log(e)
@@ -274,7 +292,7 @@ export async function checkAndInstallDeps(path) {
   ) {
     console.log("Installing dependencies for next");
     const installResult = await runNewProcessWithResult(
-      `npm i`,
+      `npm`, [`i`],
       path
     ).catch(e => {
       console.error("Failed to install dependencies", e);

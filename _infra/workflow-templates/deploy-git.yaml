@@ -17,4 +17,11 @@ spec:
     container:
       image: harbor-registry.prod.cluster.genez.io/genezio/genezio-build-git
       command: [node]
+      resources:
+        requests:
+          cpu: 1500m
+          memory: 1500Mi
+        limit:
+          cpu: 2000m
+          memory: 2000Mi
       args: ["/app/index.js", "{{inputs.parameters.token}}", "{{inputs.parameters.githubRepository}}", "{{inputs.parameters.projectName}}", "{{inputs.parameters.region}}", "{{inputs.parameters.basePath}}"]

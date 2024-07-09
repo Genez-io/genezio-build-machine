@@ -15,6 +15,12 @@ spec:
       - name: token
       - name: codeURL
     container:
+      requests:
+        cpu: 1500m
+        memory: 1500Mi
+      limit:
+        cpu: 2000m
+        memory: 2000Mi
       image: harbor-registry.prod.cluster.genez.io/genezio/genezio-build-s3
       command: [node]
       args: ["/app/index.js", "{{inputs.parameters.token}}"]
