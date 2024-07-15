@@ -1,7 +1,7 @@
 import fs from "fs";
 import archiver from "archiver";
 import https from "https";
-import { exec, spawn } from "child_process";
+import { spawn } from "child_process";
 import path from "path";
 import os from "os"
 import { parse, stringify } from "yaml-transmute";

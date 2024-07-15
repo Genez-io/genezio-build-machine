@@ -113,6 +113,7 @@ func (d *deploymentsController) DeployFromS3Workflow(w http.ResponseWriter, r *h
 		wfService = d.wfService
 	}
 	workflowRes := wfService.S3Workflow(body.Token, s3URLDownload, body.ProjectName, body.Region, body.Stage, body.BasePath)
+	w.Header().Add("Content-Type", "application/json")
 	w.Write([]byte(workflowRes))
 }
 
@@ -169,7 +170,7 @@ func (d *deploymentsController) DeployFromGithubWorkflow(w http.ResponseWriter, 
 		body.Region,
 		body.BasePath,
 	)
-
+	w.Header().Add("Content-Type", "application/json")
 	w.Write([]byte(workflowRes))
 }
 
@@ -237,7 +238,7 @@ func (d *deploymentsController) DeployEmptyProjectWorkflow(w http.ResponseWriter
 		body.BasePath,
 		parsedStack,
 	)
-
+	w.Header().Add("Content-Type", "application/json")
 	w.Write([]byte(workflowRes))
 }
 
