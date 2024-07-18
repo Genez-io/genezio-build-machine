@@ -3,6 +3,38 @@ import archiver from "archiver";
 import https from "https";
 import { exec } from "child_process";
 import path from "path";
+
+export const BuildStatus = {
+  PENDING: "PENDING",
+  AUTHENTICATING: "AUTHENTICATING",
+  PULLING_CODE: "PULLING_CODE",
+  INSTALLING_DEPS: "INSTALLING_DEPS",
+  BUILDING: "BUILDING",
+  DEPLOYING: "DEPLOYING",
+  DEPLOYING_BACKEND: "DEPLOYING_BACKEND",
+  DEPLOYING_FRONTEND: "DEPLOYING_FRONTEND",
+  SUCCESS: "SUCCESS",
+  FAILED: "FAILED"
+};
+
+export async function addStatus(status, message, statusArray) {
+  const statusFile = path.join("/tmp", "status.json");
+  statusArray.push({ status, message, time: new Date().toISOString() });
+  fs.writeFile(statusFile, JSON.stringify(statusArray), { mode: 0o777 }, (err) => {
+    if (err) {
+      console.error("Failed to write status file", err);
+    }
+  })
+  if (status === "FAILED") {
+    // Sleep 5 seconds to allow the status file to be read
+    // before the process exits
+    // This is a workaround for the status file not being read in time, will be removed
+    // once we properly setup state storage in a persistent database
+    console.log("Sleeping for 5 seconds, waiting status read");
+    await new Promise(r => setTimeout(r, 5000));
+  }
+}
+
 export async function zipDirectory(
   sourceDir,
   outPath,
