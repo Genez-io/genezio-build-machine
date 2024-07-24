@@ -19,6 +19,7 @@ import (
 
 type S3DeploymentArgo struct {
 	S3Deployment
+    Stage               string
 	Token               string
 	CodeAlreadyUploaded bool
 	ArgoClient          service.ArgoService
@@ -74,12 +75,7 @@ func (d *S3DeploymentArgo) uploadCode() error {
 	}
 	defer os.RemoveAll(tmpFolderPath)
 
-	stage := "prod"
-	if d.Stage != nil {
-		stage = *d.Stage
-	}
-
-	s3URLUpload, err := utils.UploadContentToS3(archivePath, d.ProjectName, d.Region, stage, d.Token)
+	s3URLUpload, err := utils.UploadContentToS3(archivePath, d.ProjectName, d.Region, d.Stage, d.Token)
 	if err != nil {
 		return err
 	}
@@ -92,7 +88,7 @@ func (d *S3DeploymentArgo) uploadCode() error {
 	uploadKey := strings.TrimLeft(s3ParsedURL.Path, "/")
 	// Call service
 	bucketBaseName := internal.GetConfig().BucketBaseName
-    log.Println("Bucket base name", bucketBaseName, uploadKey)
+    log.Println("Bucket base name", bucketBaseName)
 	s3URLDownload, err := utils.DownloadFromS3PresignedURL(d.Region, fmt.Sprintf("%s-%s", bucketBaseName, d.Region), uploadKey)
 	if err != nil {
 		return err
@@ -162,17 +158,18 @@ func (d *S3DeploymentArgo) Submit() (string, error) {
 	return wf_id, nil
 }
 
-func NewS3ArgoDeployment(token string) Workflow {
+func NewS3ArgoDeployment(token string, stage string) Workflow {
 	argoService := service.NewArgoService()
 	return &S3DeploymentArgo{
 		Token:      token,
+        Stage:      stage,
 		ArgoClient: *argoService,
 	}
 }
 
 func (d *S3DeploymentArgo) RenderArgoTemplate() wfv1.Workflow {
 	tokenAS := wfv1.ParseAnyString(d.Token)
-	s3URLAS := wfv1.ParseAnyString(d.S3DownloadURL)
+	stage := wfv1.ParseAnyString(d.Stage)
 	s3FilePerms := int32(0755)
 
 	templateName := "build-s3"
@@ -222,8 +219,8 @@ func (d *S3DeploymentArgo) RenderArgoTemplate() wfv1.Workflow {
 												Value: &tokenAS,
 											},
 											{
-												Name:  "codeURL",
-												Value: &s3URLAS,
+												Name:  "stage",
+												Value: &stage,
 											},
 										},
 									},

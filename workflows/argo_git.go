@@ -16,6 +16,7 @@ import (
 type GitDeploymentArgo struct {
 	GitDeployment
 	Token        string
+    Stage        string
 	ArgoClient   service.ArgoService
 	StateManager statemanager.StateManager
 }
@@ -110,11 +111,12 @@ func (d *GitDeploymentArgo) Validate(args json.RawMessage) error {
 	return nil
 }
 
-func NewGitArgoWorkflow(token string) Workflow {
+func NewGitArgoWorkflow(token string, stage string) Workflow {
 	argoService := service.NewArgoService()
 
 	return &GitDeploymentArgo{
 		Token:      token,
+        Stage:      stage,
 		ArgoClient: *argoService,
 	}
 }
@@ -126,7 +128,7 @@ func (d *GitDeploymentArgo) RenderArgoTemplate() wfv1.Workflow {
 	projectnameAS := wfv1.ParseAnyString(d.ProjectName)
 	basePathAS := wfv1.ParseAnyString("")
 	stackAS := wfv1.ParseAnyString("")
-    log.Println("IsNewProject = ", d.IsNewProject)
+    stage := wfv1.ParseAnyString(d.Stage)
     isNewProjectAS := wfv1.ParseAnyString(fmt.Sprintf("%t", d.IsNewProject))
 
 	if d.BasePath != nil {
@@ -200,6 +202,10 @@ func (d *GitDeploymentArgo) RenderArgoTemplate() wfv1.Workflow {
                                             {
                                                 Name:  "isNewProject",
                                                 Value: &isNewProjectAS,
+                                            },
+                                            {
+                                                Name:  "stage",
+                                                Value: &stage,
                                             },
 										},
 									},
