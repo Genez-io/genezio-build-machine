@@ -9,12 +9,12 @@ import (
 )
 
 type configStruct struct {
-	ServerPort         string `key:"SERVER_PORT" default:"8080"`
-	BackendURL         string `key:"BACKEND_URL" default:"https://dev.api.genez.io"`
-	AWSAccessKeyID     string `key:"AWS_ACCESS_KEY_ID"`
-	AWSSecretAccessKey string `key:"AWS_SECRET_ACCESS_KEY"`
-	BucketBaseName     string `key:"BUCKET_BASE_NAME"`
-
+	ServerPort          string `key:"SERVER_PORT" default:"8080"`
+	BackendURL          string `key:"BACKEND_URL" default:"https://dev.api.genez.io"`
+	AWSAccessKeyID      string `key:"AWS_ACCESS_KEY_ID"`
+	AWSSecretAccessKey  string `key:"AWS_SECRET_ACCESS_KEY"`
+	BucketBaseName      string `key:"BUCKET_BASE_NAME"`
+	MaxConcurrentBuilds string `key:"MAX_CONCURRENT_BUILDS" default:"3"`
 	// Environment
 	Env string `key:"ENV" default:"local"`
 

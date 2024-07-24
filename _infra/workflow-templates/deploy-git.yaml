@@ -15,7 +15,7 @@ spec:
       - name: projectName
       - name: basePath
     container:
-      image: harbor-registry.prod.cluster.genez.io/genezio/genezio-build-git
+      image: 408878048420.dkr.ecr.us-east-1.amazonaws.com/genezio-build-git-prod:latest
       command: [node]
       resources:
         requests:

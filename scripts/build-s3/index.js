@@ -1,7 +1,7 @@
 import path from "path";
 import fs from "fs";
 import os from "os";
-import { runNewProcessWithResult, unzipArchive, } from "./utils.js";
+import { addStatus, BuildStatus, runNewProcessWithResult, unzipArchive, } from "./utils.js";
 
 console.log("Starting build from s3 flow");
 console.log(process.argv)
@@ -14,12 +14,14 @@ deployFromArchive({
 
 async function deployFromArchive(params) {
   const tmpDir = "/tmp/projectCode"
-
+  let statusArray = []
+  await addStatus(BuildStatus.PENDING, "Starting build from s3 flow", statusArray);
   console.log("Unzipping code")
   await unzipArchive("/tmp/projectCode.zip", tmpDir);
 
   const token = params.token;
   if (!token) {
+    await addStatus(BuildStatus.FAILED, "Invalid token", statusArray);
     throw Error("Invalid request");
   }
 
@@ -27,51 +29,46 @@ async function deployFromArchive(params) {
 
   // deploy the code
   // npm i
+  await addStatus(BuildStatus.INSTALLING_DEPS, "Installing dependencies", statusArray);
   console.log("Installing dependencies");
   const installResult = await runNewProcessWithResult(
     `npm i`,
     tmpDir
-  ).catch(e => {
+  ).catch(async e => {
+    await addStatus(BuildStatus.FAILED, `Failed to install dependencies ${installResult.stderr}`, statusArray);
     throw Error("Failed to install dependencies", e);
   });
 
-  if (!installResult) {
-    await cleanUp(tmpDir);
-    throw Error(`Failed to install dependencies ${installResult.stdout} ${installResult.stderr}`);
-  }
-
   console.log("Installed dependencies");
-  console.log("Deploying...");
+  await addStatus(BuildStatus.AUTHENTICATING, "Authenticating with genezio", statusArray);
   const loginResult = await runNewProcessWithResult(
     `genezio login ${token}`,
     tmpDir
-  ).catch(e => {
-    throw Error("Failed to deploy", e);
-  });
+  )
   if (!loginResult || loginResult.code !== 0) {
     console.log(loginResult.stdout)
     console.log(loginResult.stderr)
+    await addStatus(BuildStatus.FAILED, `Failed to login ${loginResult.stderr}`, statusArray);
     throw Error(`Failed to login ${loginResult.stdout} ${loginResult.stderr}`);
   }
   console.log("Logged in");
 
+  console.log("Deploying...");
+  await addStatus(BuildStatus.DEPLOYING, "Deploying project", statusArray);
   const deployResult = await runNewProcessWithResult(
     `CI=true genezio deploy`,
     tmpDir
-  ).catch(e => {
-    throw Error("Failed to deploy", e);
-  });
+  )
 
   if (!deployResult || deployResult.code !== 0) {
     console.log(deployResult.stdout)
     console.log(deployResult.stderr)
+    await addStatus(BuildStatus.FAILED, `Failed to deploy ${deployResult.stderr}`, statusArray);
     throw Error(`Failed to deploy ${deployResult.stdout} ${deployResult.stderr}`);
   }
-  console.log("Deployed");
 
-  await cleanUp(tmpDir).catch(e => {
-    console.error("Failed to clean up", e);
-  });
+  await addStatus(BuildStatus.SUCCESS, "Workflow completed successfully", statusArray);
+  console.log("Deployed");
 
   console.log("DONE Deploying, sending response");
 }

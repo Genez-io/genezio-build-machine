@@ -21,6 +21,6 @@ spec:
       limit:
         cpu: 2000m
         memory: 2000Mi
-      image: harbor-registry.prod.cluster.genez.io/genezio/genezio-build-s3
+      image: 408878048420.dkr.ecr.us-east-1.amazonaws.com/genezio-build-s3-prod:latest
       command: [node]
       args: ["/app/index.js", "{{inputs.parameters.token}}"]
