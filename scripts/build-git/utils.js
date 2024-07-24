@@ -461,29 +461,43 @@ export function writeToFile(
   });
 }
 
-export async function checkAndInstallDeps(path, statusArray) {
-  // Check if next.config.js exists
-  if (
-    fs.existsSync(`${path}/next.config.js`) ||
-    fs.existsSync(`${path}/next.config.mjs`)
-  ) {
-    await addStatus(BuildStatus.INSTALLING_DEPS, "Installing dependencies for next", statusArray);
-    console.log("Installing dependencies for next");
-    const installResult = await runNewProcessWithResult(
-      `npm`, [`i`],
-      path
-    ).catch(async e => {
-      await addStatus(BuildStatus.FAILED, `Failed to install dependencies ${e}`, statusArray);
-      console.error("Failed to install dependencies", e);
-      return null;
-    });
-    if (!installResult) {
-      await addStatus(BuildStatus.FAILED, `Failed to install dependencies ${installResult.stdout} ${installResult.stderr}`, statusArray);
-      throw `Failed to install dependencies ${installResult.stdout} ${installResult.stderr}`;
+export async function checkAndInstallDeps(currentPath, statusArray) {
+    let shouldInstallDeps = false;
+
+    if (
+        fs.existsSync(path.join(currentPath, "next.config.js")) ||
+        fs.existsSync(path.join(currentPath, "next.config.mjs"))
+    ) {
+        shouldInstallDeps = true;
     }
-  }
 
-  console.log("DONE Installing dependencies");
+    // Check if "next" package is present in the project dependencies
+    if (fs.existsSync(path.join(currentPath, "package.json"))) {
+        const packageJson = JSON.parse(fs.readFileSync(path.join(currentPath, "package.json"), "utf-8"));
+        if (packageJson.dependencies?.next) {
+            shouldInstallDeps = true;
+        }
+    }
 
-  return true;
+    // Check if next.config.js exists
+    if (shouldInstallDeps) {
+        await addStatus(BuildStatus.INSTALLING_DEPS, "Installing dependencies for next", statusArray);
+        console.log("Installing dependencies for next");
+        const installResult = await runNewProcessWithResult(
+            `npm`, [`i`],
+            currentPath
+        ).catch(async e => {
+                await addStatus(BuildStatus.FAILED, `Failed to install dependencies ${e}`, statusArray);
+                console.error("Failed to install dependencies", e);
+                return null;
+            });
+        if (!installResult) {
+            await addStatus(BuildStatus.FAILED, `Failed to install dependencies ${installResult.stdout} ${installResult.stderr}`, statusArray);
+            throw `Failed to install dependencies ${installResult.stdout} ${installResult.stderr}`;
+        }
+    }
+
+    console.log("DONE Installing dependencies");
+
+    return true;
 }
