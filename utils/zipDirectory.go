@@ -16,7 +16,7 @@ func ZipDirectory(srcToZip, dstToZip string) error {
 	if err != nil {
 		return err
 	}
-    defer destinationFile.Close()
+	defer destinationFile.Close()
 
 	var exclusionsList []string
 	for _, exclusion := range ExcludedFiles {
@@ -29,7 +29,7 @@ func ZipDirectory(srcToZip, dstToZip string) error {
 	}
 
 	myZip := zip.NewWriter(destinationFile)
-    defer myZip.Close()
+	defer myZip.Close()
 	err = filepath.Walk(srcToZip, func(filePath string, info os.FileInfo, walkErr error) error {
 		if walkErr != nil {
 			return walkErr

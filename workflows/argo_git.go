@@ -59,7 +59,7 @@ func (d *GitDeploymentArgo) Submit() (string, error) {
 				continue
 			}
 
-            log.Printf("Workflow %s status: %v", wf_id, res)
+			log.Printf("Workflow %s status: %v", wf_id, res)
 
 			// get current state history
 			state, err := d.StateManager.GetState(wf_id)
@@ -92,9 +92,9 @@ func (d *GitDeploymentArgo) Validate(args json.RawMessage) error {
 	if err != nil {
 		return err
 	}
-    //convert args to string and print it
-    log.Printf("args = %v", string(args))
-    log.Printf("Args: %v %v %v", d.ProjectName, d.Repository, d.Region)
+	//convert args to string and print it
+	log.Printf("args = %v", string(args))
+	log.Printf("Args: %v %v %v", d.ProjectName, d.Repository, d.Region)
 	if d.Repository == "" {
 		return fmt.Errorf("repository is required")
 	}
@@ -126,22 +126,22 @@ func (d *GitDeploymentArgo) RenderArgoTemplate() wfv1.Workflow {
 	projectnameAS := wfv1.ParseAnyString(d.ProjectName)
 	basePathAS := wfv1.ParseAnyString("")
 	stackAS := wfv1.ParseAnyString("")
-    stage := wfv1.ParseAnyString(d.Stage)
-    isNewProjectAS := wfv1.ParseAnyString(fmt.Sprintf("%t", d.IsNewProject))
+	stage := wfv1.ParseAnyString(d.Stage)
+	isNewProjectAS := wfv1.ParseAnyString(fmt.Sprintf("%t", d.IsNewProject))
 
 	if d.BasePath != nil {
 		basePathAS = wfv1.ParseAnyString(*d.BasePath)
 	}
 
-    if d.Stack != nil {
-        jsonData, err := json.Marshal(d.Stack)
-        if err != nil {
-            log.Println("Error marshalling stack", d.Stack)
-        } else {
-            stackAS = wfv1.ParseAnyString(string(jsonData))
-        }
-    }
-    log.Printf("stackAS = %v", stackAS)
+	if d.Stack != nil {
+		jsonData, err := json.Marshal(d.Stack)
+		if err != nil {
+			log.Println("Error marshalling stack", d.Stack)
+		} else {
+			stackAS = wfv1.ParseAnyString(string(jsonData))
+		}
+	}
+	log.Printf("stackAS = %v", stackAS)
 
 	templateName := "build-git"
 	templateRef := "genezio-build-git-template"
@@ -193,18 +193,18 @@ func (d *GitDeploymentArgo) RenderArgoTemplate() wfv1.Workflow {
 												Name:  "basePath",
 												Value: &basePathAS,
 											},
-                                            {
-                                                Name:  "stack",
-                                                Value: &stackAS,
-                                            },
-                                            {
-                                                Name:  "isNewProject",
-                                                Value: &isNewProjectAS,
-                                            },
-                                            {
-                                                Name:  "stage",
-                                                Value: &stage,
-                                            },
+											{
+												Name:  "stack",
+												Value: &stackAS,
+											},
+											{
+												Name:  "isNewProject",
+												Value: &isNewProjectAS,
+											},
+											{
+												Name:  "stage",
+												Value: &stage,
+											},
 										},
 									},
 								},

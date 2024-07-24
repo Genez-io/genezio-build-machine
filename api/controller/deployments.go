@@ -71,7 +71,7 @@ func (d *deploymentsController) GetState(w http.ResponseWriter, r *http.Request)
 type ReqDeploy struct {
 	Token string          `json:"token"`
 	Type  string          `json:"type"`
-    Stage string          `json:"stage"`
+	Stage string          `json:"stage"`
 	Args  json.RawMessage `json:"args"`
 }
 
