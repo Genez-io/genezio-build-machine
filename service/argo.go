@@ -152,7 +152,7 @@ func (w *ArgoService) ReadStatusFileFromPod(jobId string) ([]ArgoPodStatus, erro
 	stdout_buf.Read(stdout_res)
 	// marshal to state array
 	var states []ArgoPodStatus
-    log.Printf("stdout_res = %v", string(stdout_res))
+	log.Printf("stdout_res = %v", string(stdout_res))
 	err = json.Unmarshal(stdout_res, &states)
 	if err != nil {
 		fmt.Println(err.Error())

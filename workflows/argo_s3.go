@@ -19,7 +19,6 @@ import (
 
 type S3DeploymentArgo struct {
 	S3Deployment
-    Stage               string
 	Token               string
 	CodeAlreadyUploaded bool
 	ArgoClient          service.ArgoService
@@ -69,7 +68,7 @@ func (d *S3DeploymentArgo) GetState() (WorkflowReport, error) {
 func (d *S3DeploymentArgo) uploadCode() error {
 	tmpFolderPath := utils.CreateTempFolder()
 	archivePath, err := utils.WriteCodeMapToDirAndZip(d.Code, tmpFolderPath)
-    log.Println("Archive path", archivePath)
+	log.Println("Archive path", archivePath)
 	if err != nil {
 		return err
 	}
@@ -88,7 +87,7 @@ func (d *S3DeploymentArgo) uploadCode() error {
 	uploadKey := strings.TrimLeft(s3ParsedURL.Path, "/")
 	// Call service
 	bucketBaseName := internal.GetConfig().BucketBaseName
-    log.Println("Bucket base name", bucketBaseName)
+	log.Println("Bucket base name", bucketBaseName)
 	s3URLDownload, err := utils.DownloadFromS3PresignedURL(d.Region, fmt.Sprintf("%s-%s", bucketBaseName, d.Region), uploadKey)
 	if err != nil {
 		return err
@@ -121,7 +120,7 @@ func (d *S3DeploymentArgo) Submit() (string, error) {
 		// A high number of retries is needed in case of delayed scheduling on the cluster
 		maxRetries := 35
 		for {
-            log.Printf("Polling workflow %s status", wf_id)
+			log.Printf("Polling workflow %s status", wf_id)
 			if maxRetries == 0 {
 				break
 			}
@@ -131,7 +130,7 @@ func (d *S3DeploymentArgo) Submit() (string, error) {
 				maxRetries--
 				continue
 			}
-            log.Printf("Workflow %s status: %v", wf_id, res)
+			log.Printf("Workflow %s status: %v", wf_id, res)
 
 			// get current state history
 			state, err := d.StateManager.GetState(wf_id)
@@ -158,11 +157,10 @@ func (d *S3DeploymentArgo) Submit() (string, error) {
 	return wf_id, nil
 }
 
-func NewS3ArgoDeployment(token string, stage string) Workflow {
+func NewS3ArgoDeployment(token string) Workflow {
 	argoService := service.NewArgoService()
 	return &S3DeploymentArgo{
 		Token:      token,
-        Stage:      stage,
 		ArgoClient: *argoService,
 	}
 }
