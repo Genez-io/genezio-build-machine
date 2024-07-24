@@ -16,7 +16,6 @@ import (
 type GitDeploymentArgo struct {
 	GitDeployment
 	Token        string
-    Stage        string
 	ArgoClient   service.ArgoService
 	StateManager statemanager.StateManager
 }
@@ -111,12 +110,11 @@ func (d *GitDeploymentArgo) Validate(args json.RawMessage) error {
 	return nil
 }
 
-func NewGitArgoWorkflow(token string, stage string) Workflow {
+func NewGitArgoWorkflow(token string) Workflow {
 	argoService := service.NewArgoService()
 
 	return &GitDeploymentArgo{
 		Token:      token,
-        Stage:      stage,
 		ArgoClient: *argoService,
 	}
 }

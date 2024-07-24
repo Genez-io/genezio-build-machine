@@ -19,7 +19,6 @@ import (
 
 type S3DeploymentArgo struct {
 	S3Deployment
-    Stage               string
 	Token               string
 	CodeAlreadyUploaded bool
 	ArgoClient          service.ArgoService
@@ -158,11 +157,10 @@ func (d *S3DeploymentArgo) Submit() (string, error) {
 	return wf_id, nil
 }
 
-func NewS3ArgoDeployment(token string, stage string) Workflow {
+func NewS3ArgoDeployment(token string) Workflow {
 	argoService := service.NewArgoService()
 	return &S3DeploymentArgo{
 		Token:      token,
-        Stage:      stage,
 		ArgoClient: *argoService,
 	}
 }

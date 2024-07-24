@@ -101,11 +101,7 @@ func (d *deploymentsController) Deploy(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "args is required", http.StatusBadRequest)
 		return
 	}
-    if body.Stage == "" {
-        http.Error(w, "stage is required", http.StatusBadRequest)
-        return
-    }
-	workflowExecutor := workflows.GetWorkflowExecutor(body.Type, body.Token, body.Stage)
+	workflowExecutor := workflows.GetWorkflowExecutor(body.Type, body.Token)
 	if workflowExecutor == nil {
 		http.Error(w, fmt.Sprintf("type is required, one of [%v]", workflows.AvailableDeployments), http.StatusBadRequest)
 		return
