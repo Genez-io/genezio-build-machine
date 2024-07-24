@@ -18,6 +18,7 @@ try {
     console.log("Stack does not exist")
 }
 const isNewProject = process.argv[8] === "true";
+const stage = process.argv[9];
 
 console.log(process.argv)
 deployFromGit({
@@ -48,7 +49,7 @@ async function deployFromGit(params) {
 
   let deployDir = ""
   try {
-    const tmpDir = await prepareGithubRepository(token, githubRepository, projectName, region, basePath, isNewProject, stack, statusArray)
+    const tmpDir = await prepareGithubRepository(token, githubRepository, projectName, region, basePath, isNewProject, stack, statusArray, stage)
     if (tmpDir instanceof Error) {
       await addStatus(BuildStatus.FAILED, `Failed to clone github repository ${githubRepository}`, statusArray);
       console.log(tmpDir)
@@ -65,7 +66,7 @@ async function deployFromGit(params) {
   await addStatus(BuildStatus.DEPLOYING, "Deploying project", statusArray);
   const deployResult = await runNewProcessWithResult(
     `genezio`,
-    [`deploy`],
+    [`deploy`, `--stage`, `${stage}`],
     deployDir,
     {
       "CI": true

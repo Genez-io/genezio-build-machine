@@ -71,6 +71,7 @@ func (d *deploymentsController) GetState(w http.ResponseWriter, r *http.Request)
 type ReqDeploy struct {
 	Token string          `json:"token"`
 	Type  string          `json:"type"`
+    Stage string          `json:"stage"`
 	Args  json.RawMessage `json:"args"`
 }
 
@@ -100,7 +101,11 @@ func (d *deploymentsController) Deploy(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "args is required", http.StatusBadRequest)
 		return
 	}
-	workflowExecutor := workflows.GetWorkflowExecutor(body.Type, body.Token)
+    if body.Stage == "" {
+        http.Error(w, "stage is required", http.StatusBadRequest)
+        return
+    }
+	workflowExecutor := workflows.GetWorkflowExecutor(body.Type, body.Token, body.Stage)
 	if workflowExecutor == nil {
 		http.Error(w, fmt.Sprintf("type is required, one of [%v]", workflows.AvailableDeployments), http.StatusBadRequest)
 		return

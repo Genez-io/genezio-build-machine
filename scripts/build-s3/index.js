@@ -7,6 +7,7 @@ console.log("Starting build from s3 flow");
 console.log(process.argv)
 
 const token = process.argv[2];
+const stage = process.argv[3];
 
 deployFromArchive({
   token
@@ -56,7 +57,7 @@ async function deployFromArchive(params) {
   console.log("Deploying...");
   await addStatus(BuildStatus.DEPLOYING, "Deploying project", statusArray);
   const deployResult = await runNewProcessWithResult(
-    `CI=true genezio deploy`,
+    `CI=true genezio deploy --stage ${stage}`,
     tmpDir
   )
 

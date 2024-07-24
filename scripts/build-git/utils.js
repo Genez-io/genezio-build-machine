@@ -48,7 +48,7 @@ export const BuildStatus = {
   FAILED: "FAILED"
 };
 
-async function createEmptyProject(token, projectName, region, stackParsed, tmpDir) {
+async function createEmptyProject(token, projectName, region, stackParsed, tmpDir, stage) {
   // deploy an empty project
   try {
     await axios({
@@ -63,7 +63,7 @@ async function createEmptyProject(token, projectName, region, stackParsed, tmpDi
         projectName,
         region,
         cloudProvider: "genezio-cloud",
-        stage: "prod",
+        stage: stage,
         stack: stackParsed,
       }
     })
@@ -84,9 +84,10 @@ async function createEmptyProject(token, projectName, region, stackParsed, tmpDi
     data: {
       projectName,
       region,
-      stage: "prod"
+      stage: stage 
     }
   }).catch(e => {
+    console.log(e)
     throw Error("Failed to create project code url", e);
   });
   if (!response || !response.data.presignedURL) {
@@ -289,7 +290,7 @@ export function runNewProcessWithResult(command, args, cwd, env) {
   });
 }
 
-export async function prepareGithubRepository(token, githubRepository, projectName, region, basePath, isNewProject, stackParsed, statusArray) {
+export async function prepareGithubRepository(token, githubRepository, projectName, region, basePath, isNewProject, stackParsed, statusArray, stage) {
   console.log("Deploying code from github");
   console.log("Repository", githubRepository);
   console.log("Project Name", projectName);
@@ -344,8 +345,9 @@ export async function prepareGithubRepository(token, githubRepository, projectNa
     if (isNewProject) {
         await addStatus(BuildStatus.CREATING_PROJECT, "Creating project", statusArray);
         try {
-            await createEmptyProject(token, projectName, region, stackParsed, tmpDir)
+            await createEmptyProject(token, projectName, region, stackParsed, tmpDir, stage)
         } catch (error) {
+            console.log(error);
             await addStatus(BuildStatus.FAILED, `${error.toString()}`, statusArray);
             throw new Error("Failed to create new project");
         }

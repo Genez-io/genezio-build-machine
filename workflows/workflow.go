@@ -22,7 +22,6 @@ type Workflow interface {
 
 var AvailableDeployments = []string{
 	"git",
-	"empty",
 	"s3",
 }
 
@@ -40,27 +39,16 @@ type S3Deployment struct {
 	S3DownloadURL string            `json:"s3DownloadURL,omitempty"`
 	ProjectName   string            `json:"projectName"`
 	Region        string            `json:"region"`
-	Stage         *string           `json:"stage,omitempty"`
 	BasePath      *string           `json:"basePath,omitempty"`
 	Code          map[string]string `json:"code"`
 }
 
-type EmptyDeployment struct {
-	Repository  string   `json:"githubRepository"`
-	Stack       []string `json:"stack"`
-	ProjectName string   `json:"projectName"`
-	Region      string   `json:"region"`
-	BasePath    *string  `json:"basePath,omitempty"`
-}
-
-func GetWorkflowExecutor(workflow, token string) Workflow {
+func GetWorkflowExecutor(workflow, token string, stage string) Workflow {
 	switch workflow {
 	case "git":
-		return NewGitArgoWorkflow(token)
-	case "empty":
-		return NewEmptyProjectAPIWorkflow(token)
+		return NewGitArgoWorkflow(token, stage)
 	case "s3":
-		return NewS3ArgoDeployment(token)
+		return NewS3ArgoDeployment(token, stage)
 	default:
 		return nil
 	}
