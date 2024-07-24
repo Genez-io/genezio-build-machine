@@ -16,6 +16,7 @@ func ZipDirectory(srcToZip, dstToZip string) error {
 	if err != nil {
 		return err
 	}
+    defer destinationFile.Close()
 
 	var exclusionsList []string
 	for _, exclusion := range ExcludedFiles {
@@ -28,35 +29,50 @@ func ZipDirectory(srcToZip, dstToZip string) error {
 	}
 
 	myZip := zip.NewWriter(destinationFile)
-	err = filepath.Walk(srcToZip, func(filePath string, info os.FileInfo, err error) error {
-		if info.IsDir() {
-			return nil
+    defer myZip.Close()
+	err = filepath.Walk(srcToZip, func(filePath string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
 		}
+
+		// Create the relative path for the file
+		relPath, err := filepath.Rel(srcToZip, filePath)
 		if err != nil {
 			return err
 		}
+
+		// Skip excluded files
 		if slices.Contains(exclusionsList, filePath) {
-			return filepath.SkipDir
+			return nil
 		}
-		relPath := strings.TrimPrefix(filePath, srcToZip+"/")
+
+		// If it's a directory, create it in the zip file
+		if info.IsDir() {
+			_, err := myZip.Create(relPath + "/")
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+
+		// Otherwise, it's a file, so add it to the zip
 		zipFile, err := myZip.Create(relPath)
 		if err != nil {
 			return err
 		}
+
 		fsFile, err := os.Open(filePath)
 		if err != nil {
 			return err
 		}
+		defer fsFile.Close() // Ensure the file is closed after usage
+
 		_, err = io.Copy(zipFile, fsFile)
 		if err != nil {
 			return err
 		}
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-	err = myZip.Close()
 	if err != nil {
 		return err
 	}

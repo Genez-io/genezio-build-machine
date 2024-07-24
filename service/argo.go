@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
 	"os/user"
 	"path/filepath"
 	"time"
@@ -144,13 +145,14 @@ func (w *ArgoService) ReadStatusFileFromPod(jobId string) ([]ArgoPodStatus, erro
 		Stderr: stderr_buf,
 	})
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Println("de aici", err.Error(), stderr_buf.String(), stdout_buf.String())
 		return nil, err
 	}
 	stdout_res := make([]byte, stdout_buf.Len())
 	stdout_buf.Read(stdout_res)
 	// marshal to state array
 	var states []ArgoPodStatus
+    log.Printf("stdout_res = %v", string(stdout_res))
 	err = json.Unmarshal(stdout_res, &states)
 	if err != nil {
 		fmt.Println(err.Error())

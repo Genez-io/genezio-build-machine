@@ -15,6 +15,7 @@ func WriteCodeMapToDirAndZip(code map[string]string, tmpFolderPath string) (stri
 
 		// Check if file is in a subfolder
 		if strings.Contains(fileName, "/") {
+            log.Println("Creating subfolder", path.Dir(filePath))
 			err := os.MkdirAll(path.Dir(filePath), 0755)
 			if err != nil {
 				return "", err

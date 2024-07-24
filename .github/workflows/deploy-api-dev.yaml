@@ -3,9 +3,6 @@ name: Deployment for Build System API dev
 on:
   push:
     branches: [dev]
-    paths:
-    - "**.go"
-    - ".github/workflows/deploy-api-dev.yml"
 
 jobs:
   deploy:

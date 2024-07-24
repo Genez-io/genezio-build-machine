@@ -1,7 +1,9 @@
 import fs from "fs";
 import archiver from "archiver";
 import https from "https";
-import { exec, spawn } from "child_process";
+import axios from "axios";
+import { mkdirSync } from "fs";
+import { spawn } from "child_process";
 import path from "path";
 import os from "os"
 import { parse, stringify } from "yaml-transmute";
@@ -36,22 +38,152 @@ export const BuildStatus = {
   PENDING: "PENDING",
   AUTHENTICATING: "AUTHENTICATING",
   PULLING_CODE: "PULLING_CODE",
+  CREATING_PROJECT: "CREATING_PROJECT",
   INSTALLING_DEPS: "INSTALLING_DEPS",
   BUILDING: "BUILDING",
   DEPLOYING: "DEPLOYING",
   DEPLOYING_BACKEND: "DEPLOYING_BACKEND",
   DEPLOYING_FRONTEND: "DEPLOYING_FRONTEND",
-  SUCCESS: "SUCCESS",
+  SUCCESS: "SUCCEEDED",
   FAILED: "FAILED"
 };
+
+async function createEmptyProject(token, projectName, region, stackParsed, tmpDir) {
+  // deploy an empty project
+  try {
+    await axios({
+      method: "PUT",
+      // eslint-disable-next-line no-undef
+      url: process.env.GENEZIO_API_BASE_URL + "/core/deployment",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Accept-Version": "genezio-cli/2.0.3"
+      },
+      data: {
+        projectName,
+        region,
+        cloudProvider: "genezio-cloud",
+        stage: "prod",
+        stack: stackParsed,
+      }
+    })
+  } catch (e) {
+    console.error("Failed to deploy project");
+    console.log(e)
+    throw Error("Failed to deploy empty project");
+  }
+  // get s3 presigned url
+  const response = await axios({
+    method: "POST",
+    // eslint-disable-next-line no-undef
+    url: `${process.env.GENEZIO_API_BASE_URL}/core/create-project-code-url`,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Accept-Version": "genezio-cli/2.0.3"
+    },
+    data: {
+      projectName,
+      region,
+      stage: "prod"
+    }
+  }).catch(e => {
+    throw Error("Failed to create project code url", e);
+  });
+  if (!response || !response.data.presignedURL) {
+    throw Error("Failed to create project code url");
+  }
+  const url = response.data.presignedURL;
+  if (!url) {
+    throw Error("Failed to create project code url");
+  }
+  //upload code to S3
+  const zipdir = path.join("tmp", "projectCode");
+  const zipdirfile = path.join(zipdir, "projectCode.zip");
+  mkdirSync(zipdir, { recursive: true });
+  await zipDirectory(tmpDir, zipdirfile, [
+    "projectCode.zip",
+    "**/projectCode.zip",
+    "**/node_modules/*",
+    "./node_modules/*",
+    "node_modules/*",
+    "**/node_modules",
+    "./node_modules",
+    "node_modules",
+    "node_modules/**",
+    "**/node_modules/**",
+    // ignore all .git files
+    "**/.git/*",
+    "./.git/*",
+    ".git/*",
+    "**/.git",
+    "./.git",
+    ".git",
+    ".git/**",
+    "**/.git/**",
+    // ignore all .next files
+    "**/.next/*",
+    "./.next/*",
+    ".next/*",
+    "**/.next",
+    "./.next",
+    ".next",
+    ".next/**",
+    "**/.next/**",
+    // ignore all .open-next files
+    "**/.open-next/*",
+    "./.open-next/*",
+    ".open-next/*",
+    "**/.open-next",
+    "./.open-next",
+    ".open-next",
+    ".open-next/**",
+    "**/.open-next/**",
+    // ignore all .vercel files
+    "**/.vercel/*",
+    "./.vercel/*",
+    ".vercel/*",
+    "**/.vercel",
+    "./.vercel",
+    ".vercel",
+    ".vercel/**",
+    "**/.vercel/**",
+    // ignore all .turbo files
+    "**/.turbo/*",
+    "./.turbo/*",
+    ".turbo/*",
+    "**/.turbo",
+    "./.turbo",
+    ".turbo",
+    ".turbo/**",
+    "**/.turbo/**",
+    // ignore all .sst files
+    "**/.sst/*",
+    "./.sst/*",
+    ".sst/*",
+    "**/.sst",
+    "./.sst",
+    ".sst",
+    ".sst/**",
+    "**/.sst/**",
+  ]);
+  try {
+    await uploadContentToS3(url, zipdirfile)
+  } catch (e) {
+    console.error("Failed to upload code to S3", e);
+    throw Error("Failed to upload code to S3");
+  }
+}
 
 export async function addStatus(status, message, statusArray) {
   const statusFile = path.join("/tmp", "status.json");
   statusArray.push({ status, message, time: new Date().toISOString() });
+  console.log("Adding status");
   fs.writeFile(statusFile, JSON.stringify(statusArray), { mode: 0o777 }, (err) => {
     if (err) {
       console.error("Failed to write status file", err);
     }
+
+    console.log("Wrote status file", statusFile);
   })
   if (status === "FAILED") {
     // Sleep 5 seconds to allow the status file to be read
@@ -157,7 +289,7 @@ export function runNewProcessWithResult(command, args, cwd, env) {
   });
 }
 
-export async function prepareGithubRepository(githubRepository, projectName, region, basePath, statusArray) {
+export async function prepareGithubRepository(token, githubRepository, projectName, region, basePath, isNewProject, stackParsed, statusArray) {
   console.log("Deploying code from github");
   console.log("Repository", githubRepository);
   console.log("Project Name", projectName);
@@ -209,14 +341,22 @@ export async function prepareGithubRepository(githubRepository, projectName, reg
     });
   }
 
-  const resDeps = await checkAndInstallDeps(tmpDir).catch(e => {
+    if (isNewProject) {
+        await addStatus(BuildStatus.CREATING_PROJECT, "Creating project", statusArray);
+        try {
+            await createEmptyProject(token, projectName, region, stackParsed, tmpDir)
+        } catch (error) {
+            await addStatus(BuildStatus.FAILED, `${error.toString()}`, statusArray);
+            throw new Error("Failed to create new project");
+        }
+    }
+
+  const resDeps = await checkAndInstallDeps(tmpDir, statusArray).catch(e => {
+    console.error("Failed to install dependencies", e);
     return null;
   });
 
   if (!resDeps) {
-    await cleanUp(tmpDir).catch(e => {
-      console.error("Failed to clean up", e);
-    });
     throw new Error("Failed to install dependencies");
   }
 
@@ -319,13 +459,13 @@ export function writeToFile(
   });
 }
 
-export async function checkAndInstallDeps(path) {
+export async function checkAndInstallDeps(path, statusArray) {
   // Check if next.config.js exists
   if (
     fs.existsSync(`${path}/next.config.js`) ||
     fs.existsSync(`${path}/next.config.mjs`)
   ) {
-    await addStatus(BuildStatus.INSTALLING_DEPENDENCIES, "Installing dependencies for next", statusArray);
+    await addStatus(BuildStatus.INSTALLING_DEPS, "Installing dependencies for next", statusArray);
     console.log("Installing dependencies for next");
     const installResult = await runNewProcessWithResult(
       `npm`, [`i`],

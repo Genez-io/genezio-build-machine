@@ -5,4 +5,5 @@ RUN apk add unzip
 RUN apk add git
 WORKDIR /app
 COPY . .
+ENV GENEZIO_API_BASE_URL=https://api.genez.io
 RUN npm install

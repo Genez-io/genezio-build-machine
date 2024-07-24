@@ -4,6 +4,7 @@ go 1.22.4
 
 require (
 	github.com/argoproj/argo-workflows/v3 v3.5.8
+	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
 	k8s.io/api v0.30.2
 	k8s.io/apimachinery v0.30.2
 	k8s.io/client-go v0.30.2

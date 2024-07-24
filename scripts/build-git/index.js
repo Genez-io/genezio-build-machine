@@ -10,17 +10,25 @@ const githubRepository = process.argv[3];
 const projectName = process.argv[4];
 const region = process.argv[5];
 const basePath = process.argv[6];
+let stack = null;
+
+try {
+    stack = JSON.parse(process.argv[7]);
+} catch (e) {
+    console.log("Stack does not exist")
+}
+const isNewProject = process.argv[8] === "true";
 
 console.log(process.argv)
 deployFromGit({
-  token, githubRepository, projectName, region, basePath
+  token, githubRepository, projectName, region, basePath, isNewProject, stack
 });
 
 async function deployFromGit(params) {
   let statusArray = []
   await addStatus(BuildStatus.PENDING, "Starting build from git flow", statusArray);
   console.log(params)
-  const { token, githubRepository, projectName, region, basePath } = params;
+  const { token, githubRepository, projectName, region, basePath, isNewProject, stack } = params;
   if (!token || !githubRepository) {
     throw Error("Invalid request");
   }
@@ -40,7 +48,7 @@ async function deployFromGit(params) {
 
   let deployDir = ""
   try {
-    const tmpDir = await prepareGithubRepository(githubRepository, projectName, region, basePath, statusArray)
+    const tmpDir = await prepareGithubRepository(token, githubRepository, projectName, region, basePath, isNewProject, stack, statusArray)
     if (tmpDir instanceof Error) {
       await addStatus(BuildStatus.FAILED, `Failed to clone github repository ${githubRepository}`, statusArray);
       console.log(tmpDir)
@@ -51,7 +59,6 @@ async function deployFromGit(params) {
     await addStatus(BuildStatus.FAILED, `${error.toString()}`, statusArray);
     return
   }
-
 
   // deploy the code
   console.log("Deploying...");
@@ -74,7 +81,7 @@ async function deployFromGit(params) {
     throw Error(`Failed to deploy ${deployResult.stdout} ${deployResult.stderr}`);
   }
 
-  await addStatus(BuildStatus.SUCCESS, deployResult.stdout, statusArray);
+  await addStatus(BuildStatus.SUCCESS, "Workflow completed successfully", statusArray);
   console.log("Deployed");
 
   console.log("DONE Deploying, sending response");

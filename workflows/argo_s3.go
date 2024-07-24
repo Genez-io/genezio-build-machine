@@ -7,6 +7,7 @@ import (
 	"build-machine/utils"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	"slices"
@@ -67,6 +68,7 @@ func (d *S3DeploymentArgo) GetState() (WorkflowReport, error) {
 func (d *S3DeploymentArgo) uploadCode() error {
 	tmpFolderPath := utils.CreateTempFolder()
 	archivePath, err := utils.WriteCodeMapToDirAndZip(d.Code, tmpFolderPath)
+    log.Println("Archive path", archivePath)
 	if err != nil {
 		return err
 	}
@@ -90,6 +92,7 @@ func (d *S3DeploymentArgo) uploadCode() error {
 	uploadKey := strings.TrimLeft(s3ParsedURL.Path, "/")
 	// Call service
 	bucketBaseName := internal.GetConfig().BucketBaseName
+    log.Println("Bucket base name", bucketBaseName, uploadKey)
 	s3URLDownload, err := utils.DownloadFromS3PresignedURL(d.Region, fmt.Sprintf("%s-%s", bucketBaseName, d.Region), uploadKey)
 	if err != nil {
 		return err
@@ -122,6 +125,7 @@ func (d *S3DeploymentArgo) Submit() (string, error) {
 		// A high number of retries is needed in case of delayed scheduling on the cluster
 		maxRetries := 35
 		for {
+            log.Printf("Polling workflow %s status", wf_id)
 			if maxRetries == 0 {
 				break
 			}
@@ -131,6 +135,7 @@ func (d *S3DeploymentArgo) Submit() (string, error) {
 				maxRetries--
 				continue
 			}
+            log.Printf("Workflow %s status: %v", wf_id, res)
 
 			// get current state history
 			state, err := d.StateManager.GetState(wf_id)
@@ -152,7 +157,6 @@ func (d *S3DeploymentArgo) Submit() (string, error) {
 					return
 				}
 			}
-			fmt.Println(res, err)
 		}
 	}()
 	return wf_id, nil

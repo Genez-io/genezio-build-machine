@@ -67,7 +67,7 @@ async function deployFromArchive(params) {
     throw Error(`Failed to deploy ${deployResult.stdout} ${deployResult.stderr}`);
   }
 
-  await addStatus(BuildStatus.SUCCESS, deployResult.stdout, statusArray);
+  await addStatus(BuildStatus.SUCCESS, "Workflow completed successfully", statusArray);
   console.log("Deployed");
 
   console.log("DONE Deploying, sending response");

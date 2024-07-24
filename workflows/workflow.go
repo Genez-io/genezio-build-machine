@@ -32,6 +32,8 @@ type GitDeployment struct {
 	ProjectName string  `json:"projectName"`
 	Region      string  `json:"region"`
 	BasePath    *string `json:"basePath,omitempty"`
+    Stack       []string `json:"stack,omitempty"`
+    IsNewProject bool   `json:"isNewProject"`
 }
 
 type S3Deployment struct {
