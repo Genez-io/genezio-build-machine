@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type DeploymentsController interface {
@@ -31,7 +32,10 @@ func NewDeploymentsController() DeploymentsController {
 }
 
 type ResGetState struct {
-	statemanager.State
+	BuildEngine string
+	BuildStatus statemanager.BuildStatus
+	Timestamp   time.Time
+	Transitions []statemanager.StateTransition
 }
 
 // GetState implements DeploymentsController.
@@ -60,7 +64,10 @@ func (d *deploymentsController) GetState(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	res := ResGetState{
-		State: job_state,
+		BuildEngine: job_state.BuildEngine,
+		BuildStatus: job_state.BuildStatus,
+		Timestamp:   job_state.Timestamp,
+		Transitions: job_state.Transitions,
 	}
 
 	w.Header().Add("Content-Type", "application/json")
