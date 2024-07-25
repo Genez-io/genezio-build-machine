@@ -41,7 +41,13 @@ func NewArgoService() *ArgoService {
 	namespace := "default"
 	if processENV == "local" {
 		// get kubeconfig file location
-		kubeconfig := flag.String("kubeconfig", kubeconfigDir, "(optional) absolute path to the kubeconfig file")
+		var kubeconfig *string
+		if flag.Lookup("kubeconfig") == nil {
+			kubeconfig = flag.String("kubeconfig", kubeconfigDir, "(optional) absolute path to the kubeconfig file")
+		} else {
+			kubeconfigString := flag.Lookup("kubeconfig").Value.String()
+			kubeconfig = &kubeconfigString
+		}
 		flag.Parse()
 
 		// use the current context in kubeconfig
