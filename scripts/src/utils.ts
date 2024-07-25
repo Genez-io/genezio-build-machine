@@ -7,10 +7,17 @@ import { spawn } from "child_process";
 import path from "path";
 import os from "os"
 import { parse, stringify } from "yaml-transmute";
+
+export type StatusEntry = {
+    status: string,
+    message: string,
+    time: string
+}
+
 export async function zipDirectory(
-  sourceDir,
-  outPath,
-  exclusion,
+  sourceDir: string,
+  outPath: string,
+  exclusion: string[] | null = null,
 ) {
   const archive = archiver("zip", { zlib: { level: 9 } });
   const stream = fs.createWriteStream(outPath);
@@ -19,14 +26,14 @@ export async function zipDirectory(
     exclusion = [];
   }
 
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     archive
       .glob("**/*", {
         cwd: sourceDir,
         dot: true,
         skip: exclusion,
       })
-      .on("error", (err) => reject(err))
+      .on("error", (err: Error) => reject(err))
       .pipe(stream);
 
     stream.on("close", () => resolve());
@@ -48,7 +55,7 @@ export const BuildStatus = {
   FAILED: "FAILED"
 };
 
-async function createEmptyProject(token, projectName, region, stackParsed, tmpDir, stage) {
+async function createEmptyProject(token: string, projectName: string, region: string, stackParsed: string[]|null, tmpDir: string, stage: string) {
   // deploy an empty project
   try {
     await axios({
@@ -67,7 +74,7 @@ async function createEmptyProject(token, projectName, region, stackParsed, tmpDi
         stack: stackParsed,
       }
     })
-  } catch (e) {
+  } catch (e: any) {
     console.error("Failed to deploy project");
     console.log(e)
     if (e.response && e.response.data && e.response.data.error && e.response.data.error.message) {
@@ -92,7 +99,7 @@ async function createEmptyProject(token, projectName, region, stackParsed, tmpDi
     }
   }).catch(e => {
     console.log(e)
-    throw Error("Failed to create project code url", e);
+    throw Error(`Failed to create project code url ${e}`);
   });
   if (!response || !response.data.presignedURL) {
     throw Error("Failed to create project code url");
@@ -179,7 +186,7 @@ async function createEmptyProject(token, projectName, region, stackParsed, tmpDi
   }
 }
 
-export async function addStatus(status, message, statusArray) {
+export async function addStatus(status: string, message: string, statusArray: StatusEntry[]) {
   const statusFile = path.join("/tmp", "status.json");
   statusArray.push({ status, message, time: new Date().toISOString() });
   console.log("Adding status");
@@ -201,19 +208,19 @@ export async function addStatus(status, message, statusArray) {
 }
 
 export async function unzipArchive(
-  sourcePath,
-  outDir,
+  sourcePath: string,
+  outDir: string,
 ) {
   try {
-    await runNewProcessWithResult(`unzip -o ${sourcePath} -d ${outDir}`, path.dirname(sourcePath));
+    await runNewProcessWithResult("unzip", ["-o", sourcePath, "-d", outDir], path.dirname(sourcePath));
   } catch (error) {
     console.error("Failed to unzip archive", error);
     throw error;
   }
 }
 export async function uploadContentToS3(
-  presignedURL,
-  archivePath,
+  presignedURL: string,
+  archivePath: string,
 ) {
   if (!presignedURL) {
     throw new Error("Missing presigned URL");
@@ -239,7 +246,7 @@ export async function uploadContentToS3(
     headers: headers,
   };
 
-  return await new Promise((resolve, reject) => {
+  return await new Promise<void>((resolve, reject) => {
     const req = https.request(options, (res) => {
       // If we don't consume the data, the "end" event will not fire
       // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -262,7 +269,7 @@ export async function uploadContentToS3(
   });
 }
 
-export function runNewProcessWithResult(command, args, cwd, env) {
+export function runNewProcessWithResult(command: string, args: string[], cwd = ".", env = {}): Promise<{ code: number|null, stdout: string, stderr: string }> {
   return new Promise(function (resolve) {
     const child = spawn(command, args, { cwd, env: { ...process.env, ...env } });
 
@@ -286,7 +293,7 @@ export function runNewProcessWithResult(command, args, cwd, env) {
       resolve({ code, stdout, stderr });
     });
 
-    child.on('error', (err) => {
+    child.on('error', (err: any) => {
       resolve({ code: err.code, stdout, stderr });
     });
 
@@ -294,12 +301,7 @@ export function runNewProcessWithResult(command, args, cwd, env) {
   });
 }
 
-export async function prepareGithubRepository(token, githubRepository, projectName, region, basePath, isNewProject, stackParsed, statusArray, stage) {
-  console.log("Deploying code from github");
-  console.log("Repository", githubRepository);
-  console.log("Project Name", projectName);
-  console.log("Region", region);
-
+export async function cloneRepository(githubRepository: string, basePath: string): Promise<string> {
   // create a temporary directory
   let tmpDir = await createTemporaryFolder();
   console.log("Created temporary directory", tmpDir);
@@ -310,7 +312,6 @@ export async function prepareGithubRepository(token, githubRepository, projectNa
     return null;
   });
   if (!resCheckRepo || resCheckRepo.status !== 200) {
-    await addStatus(BuildStatus.FAILED, "Failed to fetch the repository. It may not exist or is private", statusArray);
     throw new Error("Failed to fetch the repository. It may not exist or is private");
   }
 
@@ -321,60 +322,54 @@ export async function prepareGithubRepository(token, githubRepository, projectNa
     tmpDir
   ).catch(async e => {
     console.log(e)
-    await addStatus(BuildStatus.FAILED, "Failed to clone repository", statusArray);
-    throw Error("Failed to clone repository", e);
+    throw Error(`Failed to clone repository ${e}`);
 
   });
 
   if (!cloneResult || cloneResult.code !== 0) {
     console.log(cloneResult)
-    await addStatus(BuildStatus.FAILED, `Failed to clone repository ${cloneResult.stdout} ${cloneResult.stderr}`, statusArray);
     throw new Error(`Failed to clone repository ${cloneResult.stdout} ${cloneResult.stderr}`)
   }
 
   if (basePath && basePath.length > 0) {
     tmpDir = path.join(tmpDir, basePath);
   }
+
+  return tmpDir;
+}
+
+export async function writeConfigurationFileIfNeeded(tmpDir: string, projectName: string, region: string) {
   if (!fs.existsSync(path.join(tmpDir, "genezio.yaml"))) {
     // create file
     const content = `name: ${projectName}\nregion: ${region}\nyamlVersion: 2\n`;
 
     await writeToFile(tmpDir, "genezio.yaml", content, true).catch(async e => {
       console.error("Failed to create genezio.yaml", e);
-      await addStatus(BuildStatus.FAILED, `Failed to create genezio.yaml ${e}`, statusArray);
       throw new Error("Failed to create genezio.yaml");
     });
   }
+}
 
-    if (isNewProject) {
-        await addStatus(BuildStatus.CREATING_PROJECT, "Creating project", statusArray);
-        try {
-            await createEmptyProject(token, projectName, region, stackParsed, tmpDir, stage)
-        } catch (error) {
-            console.log(error);
-            await addStatus(BuildStatus.FAILED, `${error.toString()}`, statusArray);
-            throw new Error("Failed to create new project", error.toString());
-        }
+export async function createNewProject(token: string, projectName: string, region: string, stackParsed: string[]|null, tmpDir: string, stage: string) {
+    try {
+        await createEmptyProject(token, projectName, region, stackParsed, tmpDir, stage)
+    } catch (error: any) {
+        console.log(error);
+        throw new Error(`Failed to create new project ${error.toString()}`);
     }
+}
 
-  const resDeps = await checkAndInstallDeps(tmpDir, statusArray).catch(e => {
-    console.error("Failed to install dependencies", e);
-    return null;
-  });
-
-  if (!resDeps) {
-    throw new Error("Failed to install dependencies");
-  }
-
+export async function replaceGenezioImports(projectName: string, region: string, tmpDir: string) {
   try {
     if (projectName && region) {
       const yamlPath = path.join(tmpDir, "genezio.yaml");
       const yamlContent = fs.readFileSync(yamlPath, "utf-8");
       const [yaml, ctx] = parse(yamlContent);
+      const _yaml: any = yaml;
 
-      const oldYamlName = yaml.name;
-      yaml.name = projectName;
-      yaml.region = region;
+      const oldYamlName = _yaml.name;
+      _yaml.name = projectName;
+      _yaml.region = region;
 
       const newYamlContent = stringify(yaml, ctx);
       fs.writeFileSync(yamlPath, newYamlContent);
@@ -387,17 +382,14 @@ export async function prepareGithubRepository(token, githubRepository, projectNa
     console.error("Failed to update genezio.yaml", e);
     throw new Error("Failed to update genezio.yaml");
   }
-
-  return tmpDir;
 }
 
 async function recursiveReplace(
-  rootPath,
-  replacements
+  rootPath: string,
+  replacements: [string, string][],
 ) {
   const fromStats = fs.statSync(rootPath);
   if (fromStats.isDirectory()) {
-    // @ts-expect-error TypeScript does not infer the function type correctly
     const files = fs.readdirSync(rootPath);
     for (const file of files) {
       recursiveReplace(path.join(rootPath, file), replacements);
@@ -416,7 +408,7 @@ async function recursiveReplace(
   }
 }
 
-export async function createTemporaryFolder() {
+export async function createTemporaryFolder(): Promise<string> {
   return new Promise((resolve, reject) => {
     // eslint-disable-next-line no-undef
     const folderName = `genezio-${process.pid}`;
@@ -441,12 +433,12 @@ export async function createTemporaryFolder() {
   });
 }
 export function writeToFile(
-  folderPath,
-  filename,
-  content,
+  folderPath: string,
+  filename: string,
+  content: string | Buffer,
   createPathIfNeeded = false
 ) {
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     const fullPath = path.join(folderPath, filename);
 
     if (!fs.existsSync(path.dirname(fullPath)) && createPathIfNeeded) {
@@ -465,7 +457,7 @@ export function writeToFile(
   });
 }
 
-export async function checkAndInstallDeps(currentPath, statusArray) {
+export async function checkAndInstallDeps(currentPath: string, statusArray: StatusEntry[]) {
     let shouldInstallDeps = false;
 
     if (
@@ -491,14 +483,11 @@ export async function checkAndInstallDeps(currentPath, statusArray) {
             `npm`, [`i`],
             currentPath
         ).catch(async e => {
-                await addStatus(BuildStatus.FAILED, `Failed to install dependencies ${e}`, statusArray);
-                console.error("Failed to install dependencies", e);
-                return null;
-            });
-        if (!installResult) {
-            await addStatus(BuildStatus.FAILED, `Failed to install dependencies ${installResult.stdout} ${installResult.stderr}`, statusArray);
-            throw `Failed to install dependencies ${installResult.stdout} ${installResult.stderr}`;
-        }
+            console.error("Failed to install dependencies", e);
+            throw new Error(`Failed to install dependencies ${e}`);
+        });
+        console.log(installResult.stdout);
+        console.log(installResult.stderr);
     }
 
     console.log("DONE Installing dependencies");
