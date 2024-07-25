@@ -70,7 +70,11 @@ async function createEmptyProject(token, projectName, region, stackParsed, tmpDi
   } catch (e) {
     console.error("Failed to deploy project");
     console.log(e)
-    throw Error("Failed to deploy empty project");
+    if (e.response && e.response.data && e.response.data.error && e.response.data.error.message) {
+        throw Error(e.response.data.error.message);
+    } else {
+        throw Error("Failed to deploy empty project");
+    }
   }
   // get s3 presigned url
   const response = await axios({
@@ -349,7 +353,7 @@ export async function prepareGithubRepository(token, githubRepository, projectNa
         } catch (error) {
             console.log(error);
             await addStatus(BuildStatus.FAILED, `${error.toString()}`, statusArray);
-            throw new Error("Failed to create new project");
+            throw new Error("Failed to create new project", error.toString());
         }
     }
 
