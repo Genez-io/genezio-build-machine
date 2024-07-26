@@ -1,4 +1,4 @@
-import { runNewProcessWithResult, cloneRepository, addStatus, BuildStatus, writeConfigurationFileIfNeeded, createNewProject, replaceGenezioImports, StatusEntry } from "./utils.js";
+import { runNewProcessWithResult, cloneRepository, addStatus, BuildStatus, writeConfigurationFileIfNeeded, createNewProject, replaceGenezioImports, StatusEntry, checkAndInstallDeps } from "./utils.js";
 
 type InputParams = {
     token: string;
@@ -74,6 +74,10 @@ async function deployFromGit(params: InputParams, statusArray: StatusEntry[] = [
         await addStatus(BuildStatus.CREATING_PROJECT, "Creating new project", statusArray);
         await createNewProject(token, projectName, region, stack, folder, stage);
     }
+
+    console.log("Installing dependencies if needed...");
+    await checkAndInstallDeps(folder, statusArray);
+
     await replaceGenezioImports(projectName, region, folder)
 
     // deploy the code
