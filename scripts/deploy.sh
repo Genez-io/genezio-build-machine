@@ -9,7 +9,7 @@ fi
 pwd 
 docker buildx build --load --platform linux/amd64 -f Dockerfile.dev  --no-cache -t genezio-build-$1 .
 
-docker tag genezio-build-$1 harbor-registry.prod.cluster.genez.io/genezio/genezio-build-$1
+docker tag genezio-build-$1 harbor-registry.prod.cluster.genez.io/genezio/genezio-build-$1:latest
 
 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 408878048420.dkr.ecr.us-east-1.amazonaws.com/genezio-build-$1
 
