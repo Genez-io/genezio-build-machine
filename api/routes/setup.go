@@ -29,13 +29,8 @@ func SetupHTTP() {
 	mux := http.NewServeMux()
 
 	mux.Handle("/healthcheck", http.HandlerFunc(CORS(c.HealthCheck)))
-
-	mux.Handle("/deploy", http.HandlerFunc(CORS(c.DeployFromS3Workflow)))
-
-	mux.Handle("/github-deploy", http.HandlerFunc(CORS(c.DeployFromGithubWorkflow)))
-
-	mux.Handle("/deploy-empty-project", http.HandlerFunc(CORS(c.DeployEmptyProjectWorkflow)))
-
+	mux.Handle("/deploy", http.HandlerFunc(CORS(c.Deploy)))
+	mux.Handle("/state/{job_id}", http.HandlerFunc(CORS(c.GetState)))
 	serverPort := internal.GetConfig().ServerPort
 	fmt.Println("Server running on port", serverPort)
 
