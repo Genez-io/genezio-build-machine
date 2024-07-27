@@ -301,7 +301,7 @@ export function runNewProcessWithResult(command: string, args: string[], cwd = "
   });
 }
 
-export async function cloneRepository(githubRepository: string, basePath: string): Promise<string> {
+export async function cloneRepository(githubRepository: string, basePath: string, branch: string): Promise<string> {
   // create a temporary directory
   let tmpDir = await createTemporaryFolder();
   console.log("Created temporary directory", tmpDir);
@@ -318,7 +318,7 @@ export async function cloneRepository(githubRepository: string, basePath: string
   // clone the repository
   console.log("Cloning repository", githubRepository, tmpDir);
   const cloneResult = await runNewProcessWithResult(
-    `git`, ['clone', githubRepository, '.'],
+    `git`, ['clone', '--branch', branch, githubRepository, '.'],
     tmpDir
   ).catch(async e => {
     console.log(e)

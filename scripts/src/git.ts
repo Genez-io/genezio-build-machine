@@ -65,7 +65,7 @@ async function deployFromGit(params: InputParams, statusArray: StatusEntry[] = [
 
     await addStatus(BuildStatus.PULLING_CODE, "Pulling code from github", statusArray);
 
-    const folder = await cloneRepository(githubRepository, basePath);
+    const folder = await cloneRepository(githubRepository, basePath, stage);
     await writeConfigurationFileIfNeeded(folder, projectName, region);
 
     await addStatus(BuildStatus.CREATING_PROJECT, "Creating project", statusArray);
