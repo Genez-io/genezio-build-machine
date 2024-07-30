@@ -7,3 +7,4 @@ WORKDIR /app
 COPY . .
 ENV GENEZIO_API_BASE_URL=https://api.genez.io
 RUN npm install
+RUN npm run build
