@@ -11,7 +11,7 @@ echo "Current directory: $(pwd)"
 
 # Build the Docker image
 echo "Building Docker image..."
-docker buildx build --load --platform linux/amd64 -f Dockerfile.dev --no-cache -t genezio-build-$1:latest .
+docker buildx build --load --platform linux/amd64 -f Dockerfile.$1 --no-cache -t genezio-build-$1:latest .
 
 # Verify the Docker image exists locally
 if [[ "$(docker images -q genezio-build-$1:latest 2> /dev/null)" == "" ]]; then
