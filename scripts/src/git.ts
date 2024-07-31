@@ -39,16 +39,16 @@ function parseArguments(): InputParams {
     }
     const isNewProject = process.argv[9] === "true";
     const stage = process.argv[10];
-    
+
     return {
         token, githubRepository, projectName, region, basePath, isNewProject, stack, stage
     }
-}    
+}
 
 async function deployFromGit(params: InputParams, statusArray: StatusEntry[] = []) {
     await addStatus(BuildStatus.PENDING, "Starting build from git flow", statusArray);
 
-    const { token, githubRepository, projectName, region, basePath, isNewProject, stack, stage } = params;
+    let { token, githubRepository, projectName, region, basePath, isNewProject, stack, stage } = params;
     if (!token || !githubRepository) {
         throw Error("Invalid request");
     }
@@ -67,6 +67,10 @@ async function deployFromGit(params: InputParams, statusArray: StatusEntry[] = [
 
     const folder = await cloneRepository(githubRepository, basePath, stage);
     await writeConfigurationFileIfNeeded(folder, projectName, region);
+
+    if (stage === "main" || stage === "master" || stage === "") {
+        stage = "prod";
+    }
 
     await addStatus(BuildStatus.CREATING_PROJECT, "Creating project", statusArray);
 

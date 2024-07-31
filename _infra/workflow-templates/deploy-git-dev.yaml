@@ -5,8 +5,8 @@ metadata:
 spec:
   serviceAccountName: argo-workflow
   entrypoint: build-git-dev
-  # imagePullSecrets:
-  # - name: regcred
+  imagePullSecrets:
+  - name: regcred
   templates:
   - name: build-git-dev
     inputs:
@@ -26,7 +26,6 @@ spec:
       limit:
         cpu: 2000m
         memory: 2000Mi
-      image: genezio-build-git-dev
-      imagePullPolicy: Never
+      image: 408878048420.dkr.ecr.us-east-1.amazonaws.com/genezio-build-dev:latest
       command: [node]
       args: ["/app/dist/index.js", "git", "{{inputs.parameters.token}}", "{{inputs.parameters.githubRepository}}", "{{inputs.parameters.projectName}}", "{{inputs.parameters.region}}", "{{inputs.parameters.basePath}}", "{{inputs.parameters.stack}}", "{{inputs.parameters.isNewProject}}", "{{inputs.parameters.stage}}"]
