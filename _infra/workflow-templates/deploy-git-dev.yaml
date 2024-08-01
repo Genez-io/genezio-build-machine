@@ -18,7 +18,7 @@ spec:
       - name: basePath
       - name: stack
       - name: isNewProject
-      - name: stage 
+      - name: stage
     container:
       requests:
         cpu: 1500m

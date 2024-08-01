@@ -1,9 +1,6 @@
 package workflows
 
 import (
-	"build-machine/internal"
-	"build-machine/service"
-	statemanager "build-machine/state_manager"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -11,6 +8,10 @@ import (
 
 	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"build-machine/internal"
+	"build-machine/service"
+	statemanager "build-machine/state_manager"
 )
 
 type GitDeploymentArgo struct {
@@ -97,14 +98,6 @@ func (d *GitDeploymentArgo) Validate(args json.RawMessage) error {
 	log.Printf("Args: %v %v %v", d.ProjectName, d.Repository, d.Region)
 	if d.Repository == "" {
 		return fmt.Errorf("repository is required")
-	}
-
-	if d.ProjectName == "" {
-		return fmt.Errorf("projectName is required")
-	}
-
-	if d.Region == "" {
-		return fmt.Errorf("region is required")
 	}
 
 	return nil
