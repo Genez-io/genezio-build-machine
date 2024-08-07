@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"build-machine/dtos"
 	"encoding/base64"
 	"log"
 	"os"
@@ -8,9 +9,9 @@ import (
 	"strings"
 )
 
-func WriteCodeMapToDirAndZip(code map[string]string, tmpFolderPath string) (string, error) {
+func WriteCodeMapToDirAndZip(code map[string]dtos.File, tmpFolderPath string) (string, error) {
 	// Write code to temp folder
-	for fileName, fileContent := range code {
+	for fileName, file := range code {
 		filePath := path.Join(tmpFolderPath, fileName)
 		log.Default().Println("Writing file", fileName, "to", tmpFolderPath)
 
@@ -23,14 +24,18 @@ func WriteCodeMapToDirAndZip(code map[string]string, tmpFolderPath string) (stri
 			}
 		}
 
-		decoded, err := base64.StdEncoding.DecodeString(fileContent)
-		fileBytes := []byte(fileContent)
+		fileBytes := []byte{}
+        if (file.IsBase64Encoded) {
+            decoded, err := base64.StdEncoding.DecodeString(file.Content)
+            if err != nil {
+                return "", err
+            }
+            fileBytes = decoded
+        } else {
+            fileBytes = []byte(file.Content)
+        }
 
-		if err == nil {
-			fileBytes = decoded
-		}
-
-		err = os.WriteFile(filePath, fileBytes, 0644)
+        err := os.WriteFile(filePath, fileBytes, 0644)
 		if err != nil {
 			return "", err
 		}
