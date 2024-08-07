@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/base64"
 	"log"
 	"os"
 	"path"
@@ -22,7 +23,14 @@ func WriteCodeMapToDirAndZip(code map[string]string, tmpFolderPath string) (stri
 			}
 		}
 
-		err := os.WriteFile(filePath, []byte(fileContent), 0644)
+		decoded, err := base64.StdEncoding.DecodeString(fileContent)
+		fileBytes := []byte(fileContent)
+
+		if err == nil {
+			fileBytes = decoded
+		}
+
+		err = os.WriteFile(filePath, fileBytes, 0644)
 		if err != nil {
 			return "", err
 		}
