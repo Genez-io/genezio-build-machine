@@ -12,6 +12,10 @@ RUN apk add --no-cache python3 && ln -sf python3 /usr/bin/python
 # Other utilities
 RUN apk add --no-cache unzip
 
+# Bun
+RUN apk add --no-cache curl bash
+RUN curl -fsSL https://bun.sh/install | bash
+
 # Genezio dev version
 RUN git clone --branch dev https://github.com/Genez-io/genezio.git
 WORKDIR /genezio
