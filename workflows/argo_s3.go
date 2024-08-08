@@ -3,6 +3,7 @@ package workflows
 import (
 	"build-machine/internal"
 	"build-machine/service"
+	"build-machine/dtos"
 	statemanager "build-machine/state_manager"
 	"build-machine/utils"
 	"encoding/json"
@@ -18,7 +19,7 @@ import (
 )
 
 type S3DeploymentArgo struct {
-	S3Deployment
+	dtos.S3Deployment
 	Token               string
 	CodeAlreadyUploaded bool
 	ArgoClient          service.ArgoService

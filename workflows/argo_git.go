@@ -9,13 +9,14 @@ import (
 	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"build-machine/dtos"
 	"build-machine/internal"
 	"build-machine/service"
 	statemanager "build-machine/state_manager"
 )
 
 type GitDeploymentArgo struct {
-	GitDeployment
+	dtos.GitDeployment
 	Token        string
 	ArgoClient   service.ArgoService
 	StateManager statemanager.StateManager
