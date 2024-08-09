@@ -17,7 +17,7 @@ export type StatusEntry = {
 export async function zipDirectory(
   sourceDir: string,
   outPath: string,
-  exclusion: string[] | undefined = undefined,
+  exclusion: string[] | undefined = undefined
 ) {
   const archive = archiver("zip", { zlib: { level: 9 } });
   const stream = fs.createWriteStream(outPath);
@@ -42,9 +42,10 @@ export async function zipDirectory(
 }
 
 export const BuildStatus = {
-  PENDING: "PENDING",
+  SCHEDULED: "SCHEDULED",
   AUTHENTICATING: "AUTHENTICATING",
   PULLING_CODE: "PULLING_CODE",
+  CREATING_EMPTY_PROJECT: "CREATING_EMPTY_PROJECT",
   CREATING_PROJECT: "CREATING_PROJECT",
   INSTALLING_DEPS: "INSTALLING_DEPS",
   BUILDING: "BUILDING",
@@ -61,7 +62,7 @@ async function createEmptyProject(
   region: string,
   stackParsed: string[] | null,
   tmpDir: string,
-  stage: string,
+  stage: string
 ) {
   // deploy an empty project
   try {
@@ -201,11 +202,13 @@ async function createEmptyProject(
 export async function addStatus(
   status: string,
   message: string,
-  statusArray: StatusEntry[],
+  statusArray: StatusEntry[]
 ) {
   const statusFile = path.join("/tmp", "status.json");
-  statusArray.push({ status, message, time: new Date().toISOString() });
+  const newStatus = { status, message, time: new Date().toISOString() };
+  statusArray.push(newStatus);
   console.log("Adding status");
+  await reportBuildStatusWebHook(newStatus);
   fs.writeFile(
     statusFile,
     JSON.stringify(statusArray),
@@ -216,7 +219,7 @@ export async function addStatus(
       }
 
       console.log("Wrote status file", statusFile);
-    },
+    }
   );
   if (status === "FAILED") {
     // Sleep 5 seconds to allow the status file to be read
@@ -233,7 +236,7 @@ export async function unzipArchive(sourcePath: string, outDir: string) {
     await runNewProcessWithResult(
       "unzip",
       ["-o", sourcePath, "-d", outDir],
-      path.dirname(sourcePath),
+      path.dirname(sourcePath)
     );
   } catch (error) {
     console.error("Failed to unzip archive", error);
@@ -242,7 +245,7 @@ export async function unzipArchive(sourcePath: string, outDir: string) {
 }
 export async function uploadContentToS3(
   presignedURL: string,
-  archivePath: string,
+  archivePath: string
 ) {
   if (!presignedURL) {
     throw new Error("Missing presigned URL");
@@ -293,7 +296,7 @@ export function runNewProcessWithResult(
   command: string,
   args: string[],
   cwd = ".",
-  env = {},
+  env = {}
 ): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return new Promise(function (resolve) {
     const child = spawn(command, args, {
@@ -332,7 +335,7 @@ export function runNewProcessWithResult(
 export async function cloneRepository(
   githubRepository: string,
   basePath: string,
-  branch: string,
+  branch: string
 ): Promise<string> {
   // create a temporary directory
   let tmpDir = await createTemporaryFolder();
@@ -346,7 +349,7 @@ export async function cloneRepository(
     });
     if (!resCheckRepo || resCheckRepo.status !== 200) {
       throw new Error(
-        "Failed to fetch the repository. It may not exist or is private",
+        "Failed to fetch the repository. It may not exist or is private"
       );
     }
   }
@@ -360,12 +363,12 @@ export async function cloneRepository(
     async (e) => {
       console.log(e);
       throw Error(`Failed to clone repository ${e}`);
-    },
+    }
   );
   if (!cloneResult || cloneResult.code !== 0) {
     console.log(cloneResult);
     throw new Error(
-      `Failed to clone repository ${cloneResult.stdout} ${cloneResult.stderr}`,
+      `Failed to clone repository ${cloneResult.stdout} ${cloneResult.stderr}`
     );
   }
 
@@ -379,7 +382,7 @@ export async function cloneRepository(
 export async function writeConfigurationFileIfNeeded(
   tmpDir: string,
   projectName: string,
-  region: string,
+  region: string
 ) {
   if (!fs.existsSync(path.join(tmpDir, "genezio.yaml"))) {
     // create file
@@ -389,7 +392,7 @@ export async function writeConfigurationFileIfNeeded(
       async (e) => {
         console.error("Failed to create genezio.yaml", e);
         throw new Error("Failed to create genezio.yaml");
-      },
+      }
     );
   }
 }
@@ -400,7 +403,7 @@ export async function createNewProject(
   region: string,
   stackParsed: string[] | null,
   tmpDir: string,
-  stage: string,
+  stage: string
 ) {
   try {
     await createEmptyProject(
@@ -409,7 +412,7 @@ export async function createNewProject(
       region,
       stackParsed,
       tmpDir,
-      stage,
+      stage
     );
   } catch (error: any) {
     console.log(error);
@@ -420,7 +423,7 @@ export async function createNewProject(
 export async function replaceGenezioImports(
   projectName: string,
   region: string,
-  tmpDir: string,
+  tmpDir: string
 ) {
   try {
     if (projectName && region) {
@@ -448,7 +451,7 @@ export async function replaceGenezioImports(
 
 async function recursiveReplace(
   rootPath: string,
-  replacements: [string, string][],
+  replacements: [string, string][]
 ) {
   const fromStats = fs.statSync(rootPath);
   if (fromStats.isDirectory()) {
@@ -461,7 +464,7 @@ async function recursiveReplace(
 
     const newFileContent = replacements.reduce(
       (acc, [placeholder, value]) => acc.replaceAll(placeholder, value),
-      fileContent,
+      fileContent
     );
 
     if (newFileContent !== fileContent) {
@@ -498,7 +501,7 @@ export function writeToFile(
   folderPath: string,
   filename: string,
   content: string | Buffer,
-  createPathIfNeeded = false,
+  createPathIfNeeded = false
 ) {
   return new Promise<void>((resolve, reject) => {
     const fullPath = path.join(folderPath, filename);
@@ -521,7 +524,7 @@ export function writeToFile(
 
 export async function checkAndInstallDeps(
   currentPath: string,
-  statusArray: StatusEntry[],
+  statusArray: StatusEntry[]
 ) {
   let shouldInstallDeps = false;
 
@@ -535,7 +538,7 @@ export async function checkAndInstallDeps(
   // Check if "next" package is present in the project dependencies
   if (fs.existsSync(path.join(currentPath, "package.json"))) {
     const packageJson = JSON.parse(
-      fs.readFileSync(path.join(currentPath, "package.json"), "utf-8"),
+      fs.readFileSync(path.join(currentPath, "package.json"), "utf-8")
     );
     if (packageJson.dependencies?.next) {
       shouldInstallDeps = true;
@@ -547,13 +550,13 @@ export async function checkAndInstallDeps(
     await addStatus(
       BuildStatus.INSTALLING_DEPS,
       "Installing dependencies for next",
-      statusArray,
+      statusArray
     );
     console.log("Installing dependencies for next");
     const installResult = await runNewProcessWithResult(
       `npm`,
       [`i`],
-      currentPath,
+      currentPath
     ).catch(async (e) => {
       console.error("Failed to install dependencies", e);
       throw new Error(`Failed to install dependencies ${e}`);
@@ -565,4 +568,26 @@ export async function checkAndInstallDeps(
   console.log("DONE Installing dependencies");
 
   return true;
+}
+
+export async function reportBuildStatusWebHook(newStatus: StatusEntry) {
+  const reportURL = process.env.GENEZIO_API_BUILD_URL + "/report";
+  if (!reportURL) {
+    console.error("Missing report URL");
+    return;
+  }
+
+  try {
+    console.log(
+      `Reporting status [${newStatus.status}:${newStatus.message}] to ${reportURL}`
+    );
+    await axios.post(reportURL, newStatus, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.GENEZIO_WH_SECRET}`,
+      },
+    });
+  } catch (e: any) {
+    console.error("Failed to report status", e.code);
+  }
 }

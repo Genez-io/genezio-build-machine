@@ -106,11 +106,6 @@ func UploadContentToS3(archivePath, projectName, region, stage, token string) (s
 		return "", err
 	}
 
-	// decode response body in bytes
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(resp.Body)
-	respBody := buf.String()
-	fmt.Println(respBody)
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("failed to upload archive to S3: %s", resp.Status)
 	}

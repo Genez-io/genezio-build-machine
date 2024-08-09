@@ -14,4 +14,3 @@ switch (flow) {
         process.exit(1);
         break;
 }
-

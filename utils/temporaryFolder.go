@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"path"
@@ -13,14 +14,14 @@ func CreateTempFolder() string {
 
 	err := os.Mkdir(path.Join(tmpDir, folderName), 0755)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	randomSubfolder := fmt.Sprintf("%d", rand.Int31())
 	finalPath := path.Join(tmpDir, folderName, randomSubfolder)
 	err = os.Mkdir(finalPath, 0755)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	return finalPath
