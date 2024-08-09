@@ -17,6 +17,9 @@ RUN apk add --no-cache unzip
 RUN npm i -g genezio
 
 # Build program
+ENV GENEZIO_API_BASE_URL=https://api.genez.io
+ENV GENEZIO_API_BUILD_URL=https://build-system.genez.io
+
 WORKDIR /app
 COPY . .
 ENV GENEZIO_API_BASE_URL=https://api.genez.io

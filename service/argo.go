@@ -140,7 +140,7 @@ func (w *ArgoService) ReadStatusFileFromPod(jobId string) ([]ArgoPodStatus, erro
 	)
 	exec, err := remotecommand.NewSPDYExecutor(w.config, "POST", req.URL())
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Println(err.Error())
 		return nil, err
 	}
 
@@ -151,7 +151,6 @@ func (w *ArgoService) ReadStatusFileFromPod(jobId string) ([]ArgoPodStatus, erro
 		Stderr: stderr_buf,
 	})
 	if err != nil {
-		fmt.Println("de aici", err.Error(), stderr_buf.String(), stdout_buf.String())
 		return nil, err
 	}
 	stdout_res := make([]byte, stdout_buf.Len())
@@ -161,7 +160,7 @@ func (w *ArgoService) ReadStatusFileFromPod(jobId string) ([]ArgoPodStatus, erro
 	log.Printf("stdout_res = %v", string(stdout_res))
 	err = json.Unmarshal(stdout_res, &states)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Println(err.Error())
 		return nil, err
 	}
 

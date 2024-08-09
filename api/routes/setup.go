@@ -31,8 +31,10 @@ func SetupHTTP() {
 	mux.Handle("/healthcheck", http.HandlerFunc(CORS(c.HealthCheck)))
 	mux.Handle("/deploy", http.HandlerFunc(CORS(c.Deploy)))
 	mux.Handle("/state/{job_id}", http.HandlerFunc(CORS(c.GetState)))
+	mux.Handle("/stream-state/{job_id}", http.HandlerFunc(CORS(c.StreamState)))
+	mux.Handle("/report", http.HandlerFunc(CORS(c.ReceiveStatusUpdate)))
 	serverPort := internal.GetConfig().ServerPort
-	fmt.Println("Server running on port", serverPort)
+	log.Println("Server running on port", serverPort)
 
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", serverPort), mux))
 }

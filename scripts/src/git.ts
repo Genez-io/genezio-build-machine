@@ -46,7 +46,7 @@ function parseArguments(): InputParams {
 }
 
 async function deployFromGit(params: InputParams, statusArray: StatusEntry[] = []) {
-    await addStatus(BuildStatus.PENDING, "Starting build from git flow", statusArray);
+    await addStatus(BuildStatus.SCHEDULED, "Starting build from git flow", statusArray);
 
     let { token, githubRepository, projectName, region, basePath, isNewProject, stack, stage } = params;
     if (!token || !githubRepository) {
@@ -76,13 +76,12 @@ async function deployFromGit(params: InputParams, statusArray: StatusEntry[] = [
     await replaceGenezioImports(projectName, region, folder)
 
     if (isNewProject) {
-        await addStatus(BuildStatus.CREATING_PROJECT, "Creating new project", statusArray);
+        await addStatus(BuildStatus.CREATING_EMPTY_PROJECT, "Creating new project", statusArray);
         await createNewProject(token, projectName, region, stack, folder, stage);
     }
 
     console.log("Installing dependencies if needed...");
     await checkAndInstallDeps(folder, statusArray);
-
 
     // deploy the code
     console.log("Deploying...");

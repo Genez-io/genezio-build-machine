@@ -21,8 +21,10 @@ RUN npm i
 RUN npm run install-locally-dev
 
 # Build program
+ENV GENEZIO_API_BASE_URL=https://dev.api.genez.io
+ENV GENEZIO_API_BUILD_URL=https://build-system-dev.genez.io
+
 WORKDIR /app
 COPY . .
-ENV GENEZIO_API_BASE_URL=https://dev.api.genez.io
 RUN npm install 
 RUN npm run build

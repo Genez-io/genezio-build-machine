@@ -32,7 +32,7 @@ export async function runS3Flow() {
 
 async function deployFromArchive(params: InputParams, statusArray: StatusEntry[] = []) {
     const tmpDir = "/tmp/projectCode"
-    await addStatus(BuildStatus.PENDING, "Starting build from s3 flow", statusArray);
+    await addStatus(BuildStatus.SCHEDULED, "Starting build from s3 flow", statusArray);
     console.log("Unzipping code")
     await unzipArchive("/tmp/projectCode.zip", tmpDir);
 

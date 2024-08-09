@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"reflect"
 
@@ -29,7 +29,7 @@ var config *configStruct
 func loadConfigFromEnv() {
 	err := godotenv.Load()
 	if err != nil {
-		fmt.Println("Error loading .env file", err)
+		log.Println("Error loading .env file", err)
 	}
 
 	// Get array of fields for the config struct

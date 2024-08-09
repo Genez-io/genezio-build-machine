@@ -15,7 +15,6 @@ type WorkflowReport struct {
 
 type Workflow interface {
 	Submit() (string, error)
-	GetState() (WorkflowReport, error)
 	Validate(args json.RawMessage) error
 	AssignStateManager(state statemanager.StateManager)
 }

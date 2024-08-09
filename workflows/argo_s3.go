@@ -10,15 +10,16 @@ import (
 	"log"
 	"net/url"
 	"os"
-	"slices"
 	"strings"
 
 	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/google/uuid"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type S3DeploymentArgo struct {
 	S3Deployment
+	WebhookSecret       string
 	Token               string
 	CodeAlreadyUploaded bool
 	ArgoClient          service.ArgoService
@@ -60,11 +61,6 @@ func (d *S3DeploymentArgo) Validate(args json.RawMessage) error {
 	return nil
 }
 
-// GetState implements Workflow.
-func (d *S3DeploymentArgo) GetState() (WorkflowReport, error) {
-	panic("unimplemented")
-}
-
 func (d *S3DeploymentArgo) uploadCode() error {
 	tmpFolderPath := utils.CreateTempFolder()
 	archivePath, err := utils.WriteCodeMapToDirAndZip(d.Code, tmpFolderPath)
@@ -104,56 +100,21 @@ func (d *S3DeploymentArgo) Submit() (string, error) {
 			return "", err
 		}
 	}
+	d.WebhookSecret = uuid.NewString()
 	renderedWorkflow := d.RenderArgoTemplate()
 	wf_id, err := d.ArgoClient.SubmitWorkflow(renderedWorkflow)
 	if err != nil {
 		return "", err
 	}
-	err = d.StateManager.CreateState(wf_id, d.Token, "argo")
-	if err != nil {
+
+	if err := d.StateManager.AttachJobIdToWebhookSecretRef(d.WebhookSecret, wf_id); err != nil {
 		return "", err
 	}
 
-	go func() {
-		// In the future we should have a better way to handle this
-		// For now we will just poll the status of the workflow
-		// A high number of retries is needed in case of delayed scheduling on the cluster
-		maxRetries := 35
-		for {
-			log.Printf("Polling workflow %s status", wf_id)
-			if maxRetries == 0 {
-				break
-			}
-			res, err := d.ArgoClient.ReadStatusFileFromPod(wf_id)
-			if err != nil {
-				fmt.Println(err)
-				maxRetries--
-				continue
-			}
-			log.Printf("Workflow %s status: %v", wf_id, res)
+	if err := d.StateManager.CreateState(wf_id, d.Token, "argo"); err != nil {
+		return "", err
+	}
 
-			// get current state history
-			state, err := d.StateManager.GetState(wf_id)
-			if err != nil {
-				fmt.Println(err)
-				break
-			}
-
-			for _, retrievedState := range res {
-				seenThisState := slices.ContainsFunc(state.Transitions, func(i statemanager.StateTransition) bool {
-					return retrievedState.Status == string(i.From) || retrievedState.Status == string(i.To)
-				})
-
-				if !seenThisState {
-					d.StateManager.UpdateState(wf_id, retrievedState.Message, statemanager.BuildStatus(retrievedState.Status))
-				}
-
-				if retrievedState.Status == "SUCCEEDED" || retrievedState.Status == "FAILED" {
-					return
-				}
-			}
-		}
-	}()
 	return wf_id, nil
 }
 
