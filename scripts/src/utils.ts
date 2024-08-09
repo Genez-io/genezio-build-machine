@@ -14,6 +14,23 @@ export type StatusEntry = {
   time: string;
 };
 
+export async function writeEnvsToFile(
+  envs: { [key: string]: string },
+  tmpDir: string
+) {
+  const envFileName = `.env${Math.random().toString(36).substring(2, 15)}`;
+  let envContent = "";
+  for (const key in envs) {
+    envContent += `${key}=${envs[key]}\n`;
+  }
+  await writeToFile(tmpDir, envFileName, envContent, true).catch(async (e) => {
+    console.error("Failed to write env file", e);
+    throw new Error("Failed to write env file");
+  });
+
+  return envFileName;
+}
+
 export async function zipDirectory(
   sourceDir: string,
   outPath: string,

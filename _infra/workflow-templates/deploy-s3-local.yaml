@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: genezio-build-s3-template-local
+spec:
+  serviceAccountName: argo-workflow
+  entrypoint: build-s3-local
+  imagePullSecrets:
+  - name: regcred
+  templates:
+  - name: build-s3-local
+    inputs:
+      artifacts:
+      - name: codeArchive
+        path: /tmp/projectCode.zip
+      parameters:
+      - name: b64
+    container:
+      requests:
+        cpu: 1500m
+        memory: 1500Mi
+      limit:
+        cpu: 2000m
+        memory: 2000Mi
+      image: harbor-registry.prod.cluster.genez.io/genezio/genezio-build-script-local
+      command: [node]
+      args: ["/app/dist/index.js", "s3", "{{inputs.parameters.b64}}"]

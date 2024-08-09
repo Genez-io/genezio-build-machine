@@ -1,6 +1,7 @@
 package workflows
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -16,10 +17,23 @@ import (
 
 type GitDeploymentArgo struct {
 	GitDeployment
-	WebhookSecret string
-	Token         string
-	ArgoClient    service.ArgoService
-	StateManager  statemanager.StateManager
+	WebhookSecret string                    `json:"webhookSecret"`
+	Token         string                    `json:"token"`
+	ArgoClient    service.ArgoService       `json:"-"`
+	StateManager  statemanager.StateManager `json:"-"`
+}
+
+// AssignEnvVarsFromStageID implements Workflow.
+// Note: this function will check if any envVars have already been set and merge them with the new ones.
+func (d *GitDeploymentArgo) AssignEnvVarsFromStageID(envVars map[string]string) {
+	if d.EnvVars == nil {
+		d.EnvVars = envVars
+		return
+	}
+
+	for key, value := range envVars {
+		d.EnvVars[key] = value
+	}
 }
 
 // AssignStateManager implements Workflow.
@@ -54,9 +68,7 @@ func (d *GitDeploymentArgo) Validate(args json.RawMessage) error {
 	if err != nil {
 		return err
 	}
-	//convert args to string and print it
-	log.Printf("args = %v", string(args))
-	log.Printf("Args: %v %v %v", d.ProjectName, d.Repository, d.Region)
+
 	if d.Repository == "" {
 		return fmt.Errorf("repository is required")
 	}
@@ -74,38 +86,30 @@ func NewGitArgoWorkflow(token string) Workflow {
 }
 
 func (d *GitDeploymentArgo) RenderArgoTemplate() wfv1.Workflow {
-	tokenAS := wfv1.ParseAnyString(d.Token)
-	repoAS := wfv1.ParseAnyString(d.Repository)
-	regionAS := wfv1.ParseAnyString(d.Region)
-	projectnameAS := wfv1.ParseAnyString(d.ProjectName)
-	basePathAS := wfv1.ParseAnyString("")
-	stackAS := wfv1.ParseAnyString("")
-	stage := wfv1.ParseAnyString(d.Stage)
-	isNewProjectAS := wfv1.ParseAnyString(fmt.Sprintf("%t", d.IsNewProject))
-
-	if d.BasePath != nil {
-		basePathAS = wfv1.ParseAnyString(*d.BasePath)
+	// Encoded params
+	serializedParams, err := json.Marshal(d)
+	if err != nil {
+		log.Println("Error serializing params", err)
 	}
 
-	if d.Stack != nil {
-		jsonData, err := json.Marshal(d.Stack)
-		if err != nil {
-			log.Println("Error marshalling stack", d.Stack)
-		} else {
-			stackAS = wfv1.ParseAnyString(string(jsonData))
-		}
-	}
-	log.Printf("stackAS = %v", stackAS)
+	encodedParams := base64.StdEncoding.EncodeToString(serializedParams)
+	encodedParamsAS := wfv1.ParseAnyString(encodedParams)
 
 	templateName := "build-git"
 	templateRef := "genezio-build-git-template"
 	generateName := "genezio-build-git-"
-	if internal.GetConfig().Env == "dev" || internal.GetConfig().Env == "local" {
+
+	switch internal.GetConfig().Env {
+	case "dev":
 		templateName = "build-git-dev"
 		templateRef = "genezio-build-git-template-dev"
 		generateName = "genezio-build-git-dev-"
-	}
+	case "local":
+		templateName = "build-git-local"
+		templateRef = "genezio-build-git-template-local"
+		generateName = "genezio-build-git-local-"
 
+	}
 	return wfv1.Workflow{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: generateName,
@@ -129,36 +133,8 @@ func (d *GitDeploymentArgo) RenderArgoTemplate() wfv1.Workflow {
 									Arguments: wfv1.Arguments{
 										Parameters: []wfv1.Parameter{
 											{
-												Name:  "token",
-												Value: &tokenAS,
-											},
-											{
-												Name:  "githubRepository",
-												Value: &repoAS,
-											},
-											{
-												Name:  "region",
-												Value: &regionAS,
-											},
-											{
-												Name:  "projectName",
-												Value: &projectnameAS,
-											},
-											{
-												Name:  "basePath",
-												Value: &basePathAS,
-											},
-											{
-												Name:  "stack",
-												Value: &stackAS,
-											},
-											{
-												Name:  "isNewProject",
-												Value: &isNewProjectAS,
-											},
-											{
-												Name:  "stage",
-												Value: &stage,
+												Name:  "b64",
+												Value: &encodedParamsAS,
 											},
 										},
 									},

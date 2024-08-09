@@ -1,15 +1,11 @@
 package service
 
 import (
-	"build-machine/internal"
 	"bytes"
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
-	"os/user"
-	"path/filepath"
 	"time"
 
 	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
@@ -19,7 +15,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/kubectl/pkg/scheme"
 )
@@ -31,31 +26,12 @@ type ArgoService struct {
 }
 
 func NewArgoService() *ArgoService {
-	// get current user to determine home directory
-	usr, err := user.Current()
-	checkErr(err)
-	kubeconfigDir := filepath.Join(usr.HomeDir, ".kube", "config")
-	processENV := internal.GetConfig().Env
 	var wfClient v1alpha1.WorkflowInterface
 	var config *rest.Config
 	namespace := "default"
-	if processENV == "local" {
-		// get kubeconfig file location
-		var kubeconfig *string
-		if flag.Lookup("kubeconfig") == nil {
-			kubeconfig = flag.String("kubeconfig", kubeconfigDir, "(optional) absolute path to the kubeconfig file")
-		} else {
-			kubeconfigString := flag.Lookup("kubeconfig").Value.String()
-			kubeconfig = &kubeconfigString
-		}
-		flag.Parse()
 
-		// use the current context in kubeconfig
-		config, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
-		checkErr(err)
-	} else {
-		config = NewKubernetesConfig().Config
-	}
+	config = NewKubernetesConfig().Config
+
 	wfClient = wfclientset.NewForConfigOrDie(config).ArgoprojV1alpha1().Workflows(namespace)
 	clientSet, err := kubernetes.NewForConfig(config)
 	checkErr(err)

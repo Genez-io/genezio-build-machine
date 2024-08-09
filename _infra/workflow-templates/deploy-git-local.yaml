@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: genezio-build-git-template-local
+spec:
+  serviceAccountName: argo-workflow
+  entrypoint: build-git-local
+  imagePullSecrets:
+  - name: regcred
+  templates:
+  - name: build-git-local
+    inputs:
+      parameters:
+      - name: b64
+    container:
+      requests:
+        cpu: 1500m
+        memory: 1500Mi
+      limit:
+        cpu: 2000m
+        memory: 2000Mi
+      image: harbor-registry.prod.cluster.genez.io/genezio/genezio-build-script-local
+      command: [node]
+      args: ["/app/dist/index.js", "git", "{{inputs.parameters.b64}}"]
