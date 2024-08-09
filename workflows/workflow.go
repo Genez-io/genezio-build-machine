@@ -17,6 +17,7 @@ type Workflow interface {
 	Submit() (string, error)
 	Validate(args json.RawMessage) error
 	AssignStateManager(state statemanager.StateManager)
+	AssignEnvVarsFromStageID(envVars map[string]string)
 }
 
 var AvailableDeployments = []string{
@@ -26,13 +27,14 @@ var AvailableDeployments = []string{
 
 // Specific input definitions for each workflow type
 type GitDeployment struct {
-	Repository   string   `json:"githubRepository"`
-	ProjectName  string   `json:"projectName"`
-	Region       string   `json:"region"`
-	Stage        string   `json:"stage"`
-	BasePath     *string  `json:"basePath,omitempty"`
-	Stack        []string `json:"stack,omitempty"`
-	IsNewProject bool     `json:"isNewProject"`
+	Repository   string            `json:"githubRepository"`
+	ProjectName  string            `json:"projectName"`
+	Region       string            `json:"region"`
+	Stage        string            `json:"stage"`
+	BasePath     *string           `json:"basePath,omitempty"`
+	Stack        []string          `json:"stack,omitempty"`
+	IsNewProject bool              `json:"isNewProject"`
+	EnvVars      map[string]string `json:"envVars,omitempty"`
 }
 
 type S3Deployment struct {
@@ -42,6 +44,7 @@ type S3Deployment struct {
 	Region        string            `json:"region"`
 	BasePath      *string           `json:"basePath,omitempty"`
 	Code          map[string]string `json:"code"`
+	EnvVars       map[string]string `json:"envVars,omitempty"`
 }
 
 func GetWorkflowExecutor(workflow, token string) Workflow {

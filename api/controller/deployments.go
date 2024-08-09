@@ -185,10 +185,11 @@ func (d *deploymentsController) GetState(w http.ResponseWriter, r *http.Request)
 }
 
 type ReqDeploy struct {
-	Token string          `json:"token"`
-	Type  string          `json:"type"`
-	Stage string          `json:"stage"`
-	Args  json.RawMessage `json:"args"`
+	Token   string          `json:"token"`
+	Type    string          `json:"type"`
+	Stage   string          `json:"stage"`
+	StageID string          `json:"stageID,omitempty"`
+	Args    json.RawMessage `json:"args"`
 }
 
 type ResDeploy struct {
@@ -217,6 +218,7 @@ func (d *deploymentsController) Deploy(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "args is required", http.StatusBadRequest)
 		return
 	}
+
 	workflowExecutor := workflows.GetWorkflowExecutor(body.Type, body.Token)
 	if workflowExecutor == nil {
 		http.Error(w, fmt.Sprintf("type is required, one of [%v]", workflows.AvailableDeployments), http.StatusBadRequest)
@@ -240,6 +242,18 @@ func (d *deploymentsController) Deploy(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	// Extract env vars from stage
+	if body.StageID != "" {
+		envVars, err := service.GetEnvVarsByStageID(body.StageID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		workflowExecutor.AssignEnvVarsFromStageID(envVars)
+	}
+
 	job_id, err := workflowExecutor.Submit()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

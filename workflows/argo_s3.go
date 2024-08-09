@@ -5,6 +5,7 @@ import (
 	"build-machine/service"
 	statemanager "build-machine/state_manager"
 	"build-machine/utils"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -19,11 +20,24 @@ import (
 
 type S3DeploymentArgo struct {
 	S3Deployment
-	WebhookSecret       string
-	Token               string
-	CodeAlreadyUploaded bool
-	ArgoClient          service.ArgoService
-	StateManager        statemanager.StateManager
+	WebhookSecret       string                    `json:"webhookSecret"`
+	Token               string                    `json:"token"`
+	CodeAlreadyUploaded bool                      `json:"codeAlreadyUploaded"`
+	ArgoClient          service.ArgoService       `json:"-"`
+	StateManager        statemanager.StateManager `json:"-"`
+}
+
+// AssignEnvVarsFromStageID implements Workflow.
+// Note: this function will check if any envVars have already been set and merge them with the new ones.
+func (d *S3DeploymentArgo) AssignEnvVarsFromStageID(envVars map[string]string) {
+	if d.EnvVars == nil {
+		d.EnvVars = envVars
+		return
+	}
+
+	for key, value := range envVars {
+		d.EnvVars[key] = value
+	}
 }
 
 // AssignStateManager implements Workflow.
@@ -127,19 +141,31 @@ func NewS3ArgoDeployment(token string) Workflow {
 }
 
 func (d *S3DeploymentArgo) RenderArgoTemplate() wfv1.Workflow {
-	tokenAS := wfv1.ParseAnyString(d.Token)
-	stage := wfv1.ParseAnyString(d.Stage)
 	s3FilePerms := int32(0755)
 
 	templateName := "build-s3"
 	templateRef := "genezio-build-s3-template"
 	generateName := "genezio-build-s3-"
-	if internal.GetConfig().Env == "dev" || internal.GetConfig().Env == "local" {
+
+	switch internal.GetConfig().Env {
+	case "dev":
 		templateName = "build-s3-dev"
 		templateRef = "genezio-build-s3-template-dev"
 		generateName = "genezio-build-s3-dev-"
+	case "local":
+		templateName = "build-s3-local"
+		templateRef = "genezio-build-s3-template-local"
+		generateName = "genezio-build-s3-local-"
 	}
 
+	// Encoded params
+	serializedParams, err := json.Marshal(d)
+	if err != nil {
+		log.Println("Error serializing params", err)
+	}
+
+	encodedParams := base64.StdEncoding.EncodeToString(serializedParams)
+	encodedParamsAS := wfv1.ParseAnyString(encodedParams)
 	return wfv1.Workflow{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: generateName,
@@ -174,12 +200,8 @@ func (d *S3DeploymentArgo) RenderArgoTemplate() wfv1.Workflow {
 										},
 										Parameters: []wfv1.Parameter{
 											{
-												Name:  "token",
-												Value: &tokenAS,
-											},
-											{
-												Name:  "stage",
-												Value: &stage,
+												Name:  "b64",
+												Value: &encodedParamsAS,
 											},
 										},
 									},
