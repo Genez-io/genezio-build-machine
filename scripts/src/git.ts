@@ -73,6 +73,7 @@ async function deployFromGit(params: InputParams, statusArray: StatusEntry[] = [
     }
 
     await addStatus(BuildStatus.CREATING_PROJECT, "Creating project", statusArray);
+    await replaceGenezioImports(projectName, region, folder)
 
     if (isNewProject) {
         await addStatus(BuildStatus.CREATING_PROJECT, "Creating new project", statusArray);
@@ -82,7 +83,6 @@ async function deployFromGit(params: InputParams, statusArray: StatusEntry[] = [
     console.log("Installing dependencies if needed...");
     await checkAndInstallDeps(folder, statusArray);
 
-    await replaceGenezioImports(projectName, region, folder)
 
     // deploy the code
     console.log("Deploying...");
